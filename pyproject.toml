@@ -13,6 +13,9 @@ dependencies = [
     "onnxsim==0.4.36",
 ]
 
+[project.scripts]
+onnx-export = "models.export.onnx_export:cli"
+
 [project.optional-dependencies]
 dev = [
     "jupyter"

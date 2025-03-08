@@ -1,12 +1,16 @@
 from pathlib import Path
 
-import torch
 import onnx
 import onnxoptimizer
 import onnxsim
+import torch
 from onnxruntime.tools import symbolic_shape_infer
 
-from models.pointnet2_cls_ssg import get_model
+
+def get_model(name: str, *args, **kwargs):
+    import importlib
+    module = importlib.import_module(f'models.{name}')
+    return module.get_model(*args, **kwargs)
 
 
 def export_model(model, path: Path, infer_shapes=True, infer_shapes_symbolic=True, optimize=True, simplify=True):
@@ -48,5 +52,18 @@ def export_model(model, path: Path, infer_shapes=True, infer_shapes_symbolic=Tru
     onnx.save(onnx_model, path)
 
 
+def cli():
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('name')
+    parser.add_argument('-o', '--output', type=Path, default=None)
+    args = parser.parse_args()
+    if args.output is None:
+        args.output = Path(args.name).with_suffix('.onnx')
+
+    model = get_model(args.name, num_class=6)
+    export_model(model.eval(), args.output)
+
+
 if __name__ == '__main__':
-    export_model(get_model(6).eval(), Path('model-torch.onnx'))
+    cli()

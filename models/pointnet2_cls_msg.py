@@ -1,6 +1,7 @@
 import torch.nn as nn
 import torch.nn.functional as F
-from .pointnet2_utils import PointNetSetAbstractionMsg, PointNetSetAbstraction
+
+from .pointnet2_utils import PointNetSetAbstraction, PointNetSetAbstractionMsg
 
 
 class get_model(nn.Module):
@@ -8,8 +9,10 @@ class get_model(nn.Module):
         super(get_model, self).__init__()
         in_channel = 3 if normal_channel else 0
         self.normal_channel = normal_channel
-        self.sa1 = PointNetSetAbstractionMsg(512, [0.1, 0.2, 0.4], [16, 32, 128], in_channel,[[32, 32, 64], [64, 64, 128], [64, 96, 128]])
-        self.sa2 = PointNetSetAbstractionMsg(128, [0.2, 0.4, 0.8], [32, 64, 128], 320,[[64, 64, 128], [128, 128, 256], [128, 128, 256]])
+        self.sa1 = PointNetSetAbstractionMsg(512, [0.1, 0.2, 0.4], [16, 32, 128], in_channel,
+                                             [[32, 32, 64], [64, 64, 128], [64, 96, 128]])
+        self.sa2 = PointNetSetAbstractionMsg(128, [0.2, 0.4, 0.8], [32, 64, 128], 320,
+                                             [[64, 64, 128], [128, 128, 256], [128, 128, 256]])
         self.sa3 = PointNetSetAbstraction(mlp=[256, 512, 1024], group_all=True)
         self.fc1 = nn.Linear(1024, 512)
         self.bn1 = nn.BatchNorm1d(512)
@@ -35,7 +38,7 @@ class get_model(nn.Module):
         x = self.fc3(x)
         x = F.log_softmax(x, -1)
 
-        return x,l3_points
+        return x, l3_points
 
 
 class get_loss(nn.Module):
