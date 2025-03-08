@@ -1,0 +1,22 @@
+[project]
+name = "pointnet"
+version = "0.1"
+description = "PointNet architectures and export pipelines"
+readme = "README.md"
+authors = [{name = "Waveye"}]
+requires-python = ">=3.11"
+dependencies = [
+    "torch==2.6.0",
+    "onnx==1.17.0",
+    "onnxruntime==1.21.0",
+    "onnxoptimizer==0.3.13",
+    "onnxsim==0.4.36",
+]
+
+[project.optional-dependencies]
+dev = [
+    "jupyter"
+]
+
+[tool.setuptools]
+packages = ["models"]
