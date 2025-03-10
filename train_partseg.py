@@ -113,7 +113,7 @@ def main(args):
     '''MODEL LOADING'''
     MODEL = importlib.import_module(args.model)
     shutil.copy('models/%s.py' % args.model, str(exp_dir))
-    shutil.copy('models/pointnet2_utils.py', str(exp_dir))
+    shutil.copy('models/utils.py', str(exp_dir))
 
     classifier = MODEL.get_model(num_part, normal_channel=args.normal).cuda()
     criterion = MODEL.get_loss().cuda()
