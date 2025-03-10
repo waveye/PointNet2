@@ -122,11 +122,10 @@ def sample_and_group(npoint: int, radius: float, nsample: int, xyz, points: torc
     """
     B, N, C = xyz.shape
     S = npoint
-    fps_idx = farthest_point_sample(xyz, npoint) # [B, npoint, C]
-    # new_xyz = index_points(xyz, fps_idx)
-    new_xyz = torch.squeeze(index_points(xyz, fps_idx[:, :, np.newaxis]))
+    fps_idx = farthest_point_sample(xyz, npoint)  # [B, S, C]
+    new_xyz = torch.squeeze(index_points(xyz, fps_idx[..., np.newaxis]))
     idx = query_ball_point(radius, nsample, xyz, new_xyz)
-    grouped_xyz = index_points(xyz, idx) # [B, npoint, nsample, C]
+    grouped_xyz = index_points(xyz, idx)  # [B, npoint, nsample, C]
     grouped_xyz_norm = grouped_xyz - new_xyz.view(B, S, 1, C)
 
     if points is not None:
@@ -163,7 +162,7 @@ class PointNetSetAbstraction(nn.Module):
     radius: float
     nsample: int
 
-    def __init__(self, npoint=0, radius=0.0, nsample=0, in_channel=3, mlp=(), group_all: torch.bool = False):
+    def __init__(self, npoint=0, radius=0.0, nsample=0, in_channel=3, mlp=(), group_all: bool = False):
         super(PointNetSetAbstraction, self).__init__()
         self.npoint = npoint
         self.radius = radius
@@ -175,34 +174,29 @@ class PointNetSetAbstraction(nn.Module):
             self.mlp_convs.append(nn.Conv2d(last_channel, out_channel, 1))
             self.mlp_bns.append(nn.BatchNorm2d(out_channel))
             last_channel = out_channel
+        self.out_channel = last_channel
         self.group_all = group_all
 
     def forward(self, xyz, points: torch.Tensor | None):
         """
         Input:
-            xyz: input points position data, [B, C, N]
-            points: input points data, [B, D, N]
+            xyz: input points position data, [B, N, C]
+            points: input points feature data, [B, N, D]
         Return:
-            new_xyz: sampled points position data, [B, C, S]
-            new_points_concat: sample points feature data, [B, D', S]
+            xyz: sampled points position data, [B, S, C']
+            points: sample points feature data, [B, S, D']
         """
-        xyz = xyz.permute(0, 2, 1)
-        if points is not None:
-            points = points.permute(0, 2, 1)
-
         if self.group_all:
             new_xyz, new_points = sample_and_group_all(xyz, points)
         else:
             new_xyz, new_points = sample_and_group(self.npoint, self.radius, self.nsample, xyz, points)
         # new_xyz: sampled points position data, [B, npoint, C]
         # new_points: sampled points data, [B, npoint, nsample, C+D]
-        new_points = new_points.permute(0, 3, 2, 1) # [B, C+D, nsample,npoint]
+        new_points = new_points.permute(0, 3, 2, 1)  # [B, C+D, nsample, npoint]
         for bn, conv in zip(self.mlp_bns, self.mlp_convs):
             new_points = F.relu(bn(conv(new_points)))
-
         new_points = torch.max(new_points, 2)[0]
-        new_xyz = new_xyz.permute(0, 2, 1)
-        return new_xyz, new_points
+        return new_xyz, new_points.permute(0, 2, 1)
 
 
 class PointNetSetAbstractionMsg(nn.Module):

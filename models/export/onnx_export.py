@@ -15,7 +15,7 @@ def get_model(name: str, *args, **kwargs):
 
 def export_model(model, path: Path, infer_shapes=True, infer_shapes_symbolic=True, optimize=True, simplify=True):
     # Export Torch model with dummy input
-    input_dummy = torch.randn((16, 6, 1024), dtype=torch.float32),
+    input_dummy = torch.randn((16, 1024, 6), dtype=torch.float32),
     torch.onnx.export(
         model,
         input_dummy,
