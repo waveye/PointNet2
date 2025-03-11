@@ -5,7 +5,7 @@ from .utils import PointNetSetAbstraction
 
 
 class get_model(nn.Module):
-    def __init__(self, num_class, num_dimensions=3):
+    def __init__(self, num_classes, num_dimensions=3):
         super(get_model, self).__init__()
         self.num_dimensions = num_dimensions
         self.sa1 = PointNetSetAbstraction(
@@ -20,7 +20,7 @@ class get_model(nn.Module):
         self.fc2 = nn.Linear(512, 256)
         self.bn2 = nn.BatchNorm1d(256)
         self.drop2 = nn.Dropout(0.4)
-        self.fc3 = nn.Linear(256, num_class)
+        self.fc3 = nn.Linear(256, num_classes)
 
     def forward(self, data):
         B, N, D = data.shape
@@ -38,10 +38,9 @@ class get_model(nn.Module):
 
 
 class get_loss(nn.Module):
-    def __init__(self):
+    def __init__(self, weight=None):
         super(get_loss, self).__init__()
+        self.weight = weight
 
     def forward(self, pred, target, trans_feat):
-        total_loss = F.nll_loss(pred, target)
-
-        return total_loss
+        return F.nll_loss(pred, target, weight=self.weight)
