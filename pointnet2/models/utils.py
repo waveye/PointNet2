@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from time import time
 import numpy as np
+from torch import nn as nn
 
 
 def timeit(tag, t):
@@ -311,3 +312,21 @@ class PointNetFeaturePropagation(nn.Module):
             new_points = F.relu(bn(conv(new_points)))
         return new_points
 
+
+class MinMaxScaler(nn.Module):
+    dim: int | tuple[int, ...]
+    min: torch.Tensor
+    max: torch.Tensor
+
+    def __init__(self, dim: int | tuple[int, ...] = -2):
+        super().__init__()
+        self.dim = dim
+        self.register_buffer('min', torch.zeros(1, 3))
+        self.register_buffer('max', torch.zeros(1, 3))
+
+    def fit(self, data):
+        self.min = torch.min(data, dim=self.dim, keepdim=True)[0]
+        self.max = torch.max(data, dim=self.dim, keepdim=True)[0]
+
+    def forward(self, data):
+        return (data - self.min) / (self.max - self.min)
