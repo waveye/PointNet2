@@ -44,18 +44,19 @@ def square_distance(src, dst):
     return dist
 
 
+@torch.jit.script
 def index_points(points, idx):
     """
 
     Input:
         points: input points data, [B, N, C]
-        idx: sample index data, [B, S1, S2]
+        idx: sample index data, [B, S]
     Return:
-        new_points:, indexed points data, [B, S1, S2, C]
+        new_points:, indexed points data, [B, S, C]
     """
     device = points.device
-    B, S1, S2 = idx.shape
-    batch_indices = torch.arange(B, dtype=torch.long).to(device).view(B, 1, 1).repeat(1, S1, S2)
+    B, S = idx.shape
+    batch_indices = torch.arange(B, dtype=torch.long).to(device).view(B, 1).repeat(1, S)
     new_points = points[batch_indices, idx, :]
     return new_points
 
@@ -74,17 +75,16 @@ def farthest_point_sample(xyz, npoint: int):
     centroids = torch.zeros(B, npoint, dtype=torch.long).to(device)
     distance = torch.ones(B, N).to(device) * 1e10
     farthest = torch.ones(B, dtype=torch.long).to(device)
-    batch_indices = torch.arange(B, dtype=torch.long).to(device)
     for i in range(npoint):
-        # centroids[:, i] = farthest
-        centroids.scatter_(1, torch.full((B, 1), i, dtype=torch.long).to(device), farthest.view(B, 1))
-        centroid = xyz[batch_indices, farthest, :].view(B, 1, 3)
+        centroids = torch.scatter(centroids, 1, torch.full((B, 1), i, dtype=torch.long), farthest.view(B, 1))
+        centroid = torch.gather(xyz, 1, farthest.view(B, 1, 1).expand(B, 1, 3))
         dist = torch.sum((xyz - centroid) ** 2, -1)
         distance = torch.where(dist < distance, dist, distance)
         farthest = torch.max(distance, -1)[1]
     return centroids
 
 
+@torch.jit.script
 def query_ball_point(radius: float, nsample: int, xyz, new_xyz):
     """
     Input:
@@ -109,7 +109,7 @@ def query_ball_point(radius: float, nsample: int, xyz, new_xyz):
 
 
 @torch.jit.script
-def sample_and_group(npoint: int, radius: float, nsample: int, xyz, points: torch.Tensor | None):
+def sample_and_group(npoint: int, radius: float, nsample: int, xyz, points):
     """
     Input:
         npoint:
@@ -122,23 +122,20 @@ def sample_and_group(npoint: int, radius: float, nsample: int, xyz, points: torc
         new_points: sampled points data, [B, npoint, nsample, 3+D]
     """
     B, N, C = xyz.shape
+    _, _, D = points.shape
     S = npoint
     fps_idx = farthest_point_sample(xyz, npoint)  # [B, S, C]
-    new_xyz = torch.squeeze(index_points(xyz, fps_idx[..., np.newaxis]))
+    new_xyz = index_points(xyz, fps_idx)
     idx = query_ball_point(radius, nsample, xyz, new_xyz)
-    grouped_xyz = index_points(xyz, idx)  # [B, npoint, nsample, C]
+    grouped_xyz = index_points(xyz, idx.reshape(B, npoint * nsample)).reshape(B, npoint, nsample, C)
     grouped_xyz_norm = grouped_xyz - new_xyz.view(B, S, 1, C)
-
-    if points is not None:
-        grouped_points = index_points(points, idx)
-        new_points = torch.cat([grouped_xyz_norm, grouped_points], dim=-1) # [B, npoint, nsample, C+D]
-    else:
-        new_points = grouped_xyz_norm
+    grouped_points = index_points(points, idx.reshape(B, npoint * nsample)).reshape(B, npoint, nsample, D)
+    new_points = torch.cat([grouped_xyz_norm, grouped_points], dim=-1)  # [B, npoint, nsample, C+D]
     return new_xyz, new_points
 
 
 @torch.jit.script
-def sample_and_group_all(xyz, points: torch.Tensor | None):
+def sample_and_group_all(xyz, points):
     """
     Input:
         xyz: input points position data, [B, N, 3]
@@ -151,10 +148,7 @@ def sample_and_group_all(xyz, points: torch.Tensor | None):
     B, N, C = xyz.shape
     new_xyz = torch.zeros(B, 1, C).to(device)
     grouped_xyz = xyz.view(B, 1, N, C)
-    if points is not None:
-        new_points = torch.cat([grouped_xyz, points.view(B, 1, N, -1)], dim=-1)
-    else:
-        new_points = grouped_xyz
+    new_points = torch.cat([grouped_xyz, points.view(B, 1, N, -1)], dim=-1)
     return new_xyz, new_points
 
 
@@ -178,7 +172,7 @@ class PointNetSetAbstraction(nn.Module):
         self.out_channel = last_channel
         self.group_all = group_all
 
-    def forward(self, xyz, points: torch.Tensor | None):
+    def forward(self, xyz, points):
         """
         Input:
             xyz: input points position data, [B, N, C]

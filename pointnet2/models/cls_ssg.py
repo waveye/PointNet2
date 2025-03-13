@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from .utils import MinMaxScaler, PointNetSetAbstraction
+from pointnet2.models.utils import MinMaxScaler, PointNetSetAbstraction
 
 
 class get_model(nn.Module):
@@ -28,7 +28,7 @@ class get_model(nn.Module):
     def forward(self, data):
         B, N, D = data.shape
         in_xyz, in_points = data[..., :3], data[..., 3:]
-        in_xyz = in_xyz - torch.mean(in_xyz, dim=1, keepdim=True)
+        # in_xyz = in_xyz - torch.mean(in_xyz, dim=1, keepdim=True)
         in_points = self.minmax(in_points)
         l1_xyz, l1_points = self.sa1(in_xyz, in_points)
         l2_xyz, l2_points = self.sa2(l1_xyz, l1_points)

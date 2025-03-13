@@ -13,13 +13,12 @@ def get_model(name: str, *args, **kwargs):
     return module.get_model(*args, **kwargs)
 
 
-def export_model(model, path: Path, infer_shapes=True, infer_shapes_symbolic=True, optimize=True, simplify=True):
-    # Export Torch model with dummy input
-    input_dummy = torch.randn((16, 1024, 6), dtype=torch.float32),
+def export_model(model, path: Path, input_dummy, infer_shapes=True, infer_shapes_symbolic=True, optimize=True, simplify=True):
     torch.onnx.export(
         model,
         input_dummy,
         path,
+        input_names=['input'],
         opset_version=13,
         # ONNX nodes contain docstrings mapping back to Torch calls
         verbose=True,
