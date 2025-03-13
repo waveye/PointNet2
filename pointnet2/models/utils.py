@@ -76,7 +76,8 @@ def farthest_point_sample(xyz, npoint: int):
     distance = torch.ones(B, N).to(device) * 1e10
     farthest = torch.ones(B, dtype=torch.long).to(device)
     for i in range(npoint):
-        centroids = torch.scatter(centroids, 1, torch.full((B, 1), i, dtype=torch.long), farthest.view(B, 1))
+        idx = torch.full((B, 1), i, dtype=torch.long).to(device)
+        centroids = torch.scatter(centroids, 1, idx, farthest.view(B, 1))
         centroid = torch.gather(xyz, 1, farthest.view(B, 1, 1).expand(B, 1, 3))
         dist = torch.sum((xyz - centroid) ** 2, -1)
         distance = torch.where(dist < distance, dist, distance)
@@ -316,11 +317,11 @@ class MinMaxScaler(nn.Module):
         super().__init__()
         self.dim = dim
         self.register_buffer('min', torch.zeros(1, 3))
-        self.register_buffer('max', torch.zeros(1, 3))
+        self.register_buffer('max', torch.ones(1, 3))
 
     def fit(self, data):
         self.min = torch.min(data, dim=self.dim, keepdim=True)[0]
         self.max = torch.max(data, dim=self.dim, keepdim=True)[0]
 
     def forward(self, data):
-        return (data - self.min) / (self.max - self.min)
+        return (data - self.min.to(data.device)) / (self.max.to(data.device) - self.min.to(data.device))
