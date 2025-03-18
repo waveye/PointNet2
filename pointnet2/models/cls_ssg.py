@@ -12,18 +12,20 @@ class get_model(nn.Module):
         # Min-max scaler for non-coordinate input dimensions
         self.minmax = MinMaxScaler(dim=0)
         self.sa1 = PointNetSetAbstraction(
-            npoint=512, radius=0.2, nsample=32, in_channel=num_dimensions, mlp=(64, 64, 128))
+            npoint=54, radius=0.2, nsample=28,
+            in_channel=num_dimensions, mlp=(64, 64, 128))
         self.sa2 = PointNetSetAbstraction(
-            npoint=128, radius=0.4, nsample=64, in_channel=3 + self.sa1.out_channel, mlp=(128, 128, 256))
+            npoint=22, radius=0.2, nsample=8,
+            in_channel=3 + self.sa1.out_channel, mlp=(64, 64, 128))
         self.sa3 = PointNetSetAbstraction(
             in_channel=3 + self.sa2.out_channel, mlp=(256, 512, 1024), group_all=True)
-        self.fc1 = nn.Linear(self.sa3.out_channel, 512)
-        self.bn1 = nn.BatchNorm1d(512)
-        self.drop1 = nn.Dropout(0.4)
-        self.fc2 = nn.Linear(512, 256)
-        self.bn2 = nn.BatchNorm1d(256)
-        self.drop2 = nn.Dropout(0.4)
-        self.fc3 = nn.Linear(256, num_classes)
+        self.fc1 = nn.Linear(self.sa3.out_channel, 576)
+        self.bn1 = nn.BatchNorm1d(576)
+        self.drop1 = nn.Dropout(0.2)
+        self.fc2 = nn.Linear(576, 160)
+        self.bn2 = nn.BatchNorm1d(160)
+        self.drop2 = nn.Dropout(0.2)
+        self.fc3 = nn.Linear(160, num_classes)
 
     def forward(self, data):
         B, N, D = data.shape
