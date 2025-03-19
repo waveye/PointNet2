@@ -45,9 +45,10 @@ class get_model(nn.Module):
 
 
 class get_loss(nn.Module):
-    def __init__(self, weight=None):
+    def __init__(self, weight=None, reduction='mean'):
         super(get_loss, self).__init__()
         self.weight = weight
+        self.reduction = reduction
 
     def forward(self, pred, target, trans_feat):
-        return F.nll_loss(pred, target, weight=self.weight)
+        return F.nll_loss(pred, target, weight=self.weight, reduction=self.reduction)
