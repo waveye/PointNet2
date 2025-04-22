@@ -325,3 +325,22 @@ class MinMaxScaler(nn.Module):
 
     def forward(self, data):
         return (data - self.min.to(data.device)) / (self.max.to(data.device) - self.min.to(data.device))
+
+
+class ZScorer(nn.Module):
+    dim: int | tuple[int, ...]
+    mean: torch.Tensor
+    var: torch.Tensor
+
+    def __init__(self, dim: int | tuple[int, ...] = -2):
+        super().__init__()
+        self.dim = dim
+        self.register_buffer('mean', torch.zeros(1, 3))
+        self.register_buffer('var', torch.ones(1, 3))
+
+    def fit(self, data):
+        self.mean = torch.mean(data, dim=self.dim, keepdim=True)
+        self.var = torch.var(data, dim=self.dim, keepdim=True)
+
+    def forward(self, data):
+        return (data - self.mean.to(data.device)) / torch.sqrt(self.var).to(data.device)
