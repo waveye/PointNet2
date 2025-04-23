@@ -48,5 +48,5 @@ class get_loss(nn.Module):
         self.weight = weight
         self.reduction = reduction
 
-    def forward(self, pred, target, trans_feat):
+    def forward(self, pred, target, trans_feat=None):
         return F.nll_loss(pred, target, weight=self.weight, reduction=self.reduction)
