@@ -74,7 +74,11 @@ def farthest_point_sample(xyz, npoint: int):
     B, N, C = xyz.shape
     centroids = torch.zeros(B, npoint, dtype=torch.long).to(device)
     distance = torch.ones(B, N).to(device) * 1e10
-    farthest = torch.ones(B, dtype=torch.long).to(device)
+    farthest = torch.zeros(B, dtype=torch.long).to(device)
+    # TODO: it's canonical to start with a random point, but this causes issues with ONNX export. We can consider
+    #   something like torch.arange(B, dtype=torch.long) % N which combined with batch shuffling and object shuffling
+    #   could give a good amount of randomness
+    # farthest = torch.randint(N, size=[B], dtype=torch.long).to(device)
     for i in range(npoint):
         idx = torch.full((B, 1), i, dtype=torch.long).to(device)
         centroids = torch.scatter(centroids, 1, idx, farthest.view(B, 1))
