@@ -343,8 +343,8 @@ class ZScorer(nn.Module):
         self.register_buffer('var', torch.ones(1, 3))
 
     def fit(self, data):
-        self.mean = torch.mean(data, dim=self.dim, keepdim=True)
-        self.var = torch.var(data, dim=self.dim, keepdim=True)
+        self.mean = torch.nanmean(data, dim=self.dim, keepdim=True)
+        self.var = (data - self.mean).square().nanmean(dim=self.dim, keepdim=True)
 
     def forward(self, data):
-        return (data - self.mean.to(data.device)) / torch.sqrt(self.var).to(data.device)
+        return torch.nan_to_num(data - self.mean.to(data.device)) / torch.sqrt(self.var).to(data.device)
