@@ -347,5 +347,7 @@ class ZScorer(nn.Module):
         self.var = (data - self.mean).square().nanmean(dim=self.dim, keepdim=True)
 
     def forward(self, data):
-        # return torch.nan_to_num(data - self.mean.to(data.device)) / torch.sqrt(self.var).to(data.device)
-        return (data - self.mean.to(data.device)) / torch.sqrt(self.var).to(data.device)
+        zero_mean = data - self.mean.to(data.device)
+        if self.training:
+            zero_mean = torch.nan_to_num(zero_mean)
+        return zero_mean / torch.sqrt(self.var).to(data.device)
