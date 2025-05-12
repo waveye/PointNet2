@@ -1,15 +1,13 @@
 import torch.nn as nn
 import torch.nn.functional as F
 
-from pointnet2.models.utils import PointNetSetAbstraction, ZScorer
+from pointnet2.models.utils import PointNetSetAbstraction
 
 
 class get_model(nn.Module):
     def __init__(self, num_classes, num_dimensions=3):
         super(get_model, self).__init__()
         self.num_dimensions = num_dimensions
-        # Min-max scaler for non-coordinate input dimensions
-        self.zscore = ZScorer(dim=0)
         self.sa1 = PointNetSetAbstraction(
             npoint=54, radius=0.2, nsample=28,
             in_channel=num_dimensions, mlp=(64, 64, 128))
@@ -29,7 +27,6 @@ class get_model(nn.Module):
     def forward(self, data):
         B, N, D = data.shape
         in_xyz, in_points = data[..., :3], data[..., 3:]
-        in_points = self.zscore(in_points)
         l1_xyz, l1_points = self.sa1(in_xyz, in_points)
         l2_xyz, l2_points = self.sa2(l1_xyz, l1_points)
         l3_xyz, l3_points = self.sa3(l2_xyz, l2_points)
