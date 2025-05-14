@@ -1,8 +1,9 @@
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
+from enum import IntEnum, auto
 from time import time
+
 import numpy as np
+import torch
+import torch.nn.functional as F
 from torch import nn as nn
 
 
@@ -15,7 +16,7 @@ def pc_normalize(pc):
     l = pc.shape[0]
     centroid = np.mean(pc, axis=0)
     pc = pc - centroid
-    m = np.max(np.sqrt(np.sum(pc**2, axis=1)))
+    m = np.max(np.sqrt(np.sum(pc ** 2, axis=1)))
     pc = pc / m
     return pc
 
@@ -312,42 +313,115 @@ class PointNetFeaturePropagation(nn.Module):
         return new_points
 
 
-class MinMaxScaler(nn.Module):
-    dim: int | tuple[int, ...]
-    min: torch.Tensor
-    max: torch.Tensor
+class Transformer(nn.Module):
+    def fit(self, data, mask=None):
+        raise NotImplementedError
 
-    def __init__(self, dim: int | tuple[int, ...] = -2):
+    def forward(self, data, mask=None):
+        raise NotImplementedError
+
+
+class Transform(nn.Module):
+    class Type(IntEnum):
+        DROP = auto()
+        NONE = auto()
+        Z_SCORE = auto()
+        MEAN_SUBTRACT = auto()
+
+    def __init__(self, num_dimensions: int, types=None):
         super().__init__()
-        self.dim = dim
-        self.register_buffer('min', torch.zeros(1, 3))
-        self.register_buffer('max', torch.ones(1, 3))
+        # Default treatment is to forward all input dimensions as-is
+        if types is None:
+            types = [self.Type.NONE] * num_dimensions
+        assert len(types) == num_dimensions
+        self.register_buffer('num_dimensions', torch.tensor(num_dimensions))
+        self.register_buffer('types', torch.tensor(types))
 
-    def fit(self, data):
-        self.min = torch.min(data, dim=self.dim, keepdim=True)[0]
-        self.max = torch.max(data, dim=self.dim, keepdim=True)[0]
+        # Create transformers
+        self.transformers = nn.ModuleDict()
+        for dim, transform_type in enumerate(types):
+            if module := self.make_module(transform_type):
+                self.transformers.add_module(str(dim), module)
 
-    def forward(self, data):
-        return (data - self.min.to(data.device)) / (self.max.to(data.device) - self.min.to(data.device))
+    @property
+    def num_dimensions_transformed(self):
+        return len(self.transformers)
+
+    def make_module(self, transform_type: Type) -> Transformer | None:
+        match transform_type:
+            case self.Type.NONE:
+                return Identity()
+            case self.Type.Z_SCORE:
+                return ZScorer()
+            case self.Type.MEAN_SUBTRACT:
+                return MeanSubtractor()
+
+    def fit_dim(self, data, dim, mask=None):
+        try:
+            transformer = self.transformers[str(dim)]
+        except KeyError:
+            pass
+        else:
+            transformer.fit(data[..., dim], mask)
+
+    def fit(self, data, mask=None):
+        for dim in range(self.num_dimensions):
+            self.fit_dim(data, dim, mask)
+
+    def forward_dim(self, data, dim, mask=None):
+        try:
+            transformer = self.transformers[str(dim)]
+        except KeyError:
+            pass
+        else:
+            return transformer(data[..., dim], mask)
+
+    def forward(self, data, mask=None):
+        data_transformed = [self.forward_dim(data, dim, mask) for dim in range(self.num_dimensions)]
+        # At this stage we possibly drop some dimensions
+        return torch.stack([data_dim for data_dim in data_transformed if data_dim is not None], dim=-1)
 
 
-class ZScorer(nn.Module):
-    dim: int | tuple[int, ...]
+class Identity(Transformer):
+    def fit(self, data, mask=None):
+        pass
+
+    def forward(self, data, mask=None):
+        return data
+
+
+class MeanSubtractor(Transformer):
+    def fit(self, data, mask=None):
+        pass
+
+    def forward(self, data, mask=None):
+        if mask is None:
+            return data - torch.mean(data, dim=-1, keepdim=True)
+        # Mean of masked elements in each row
+        masked_sum = torch.sum(data * mask, dim=-1, keepdim=True)
+        masked_count = torch.sum(mask, dim=-1, keepdim=True)
+        masked_mean = masked_sum / masked_count
+        return torch.where(mask, data - masked_mean, 0.0)
+
+
+class ZScorer(Transformer):
     mean: torch.Tensor
     var: torch.Tensor
 
-    def __init__(self, dim: int | tuple[int, ...] = -2):
+    def __init__(self):
         super().__init__()
-        self.dim = dim
-        self.register_buffer('mean', torch.zeros(1, 3))
-        self.register_buffer('var', torch.ones(1, 3))
+        self.register_buffer('mean', torch.tensor(0.0))
+        self.register_buffer('var', torch.tensor(1.0))
 
-    def fit(self, data):
-        self.mean = torch.nanmean(data, dim=self.dim, keepdim=True)
-        self.var = (data - self.mean).square().nanmean(dim=self.dim, keepdim=True)
+    def fit(self, data: torch.Tensor, mask=None):
+        if mask is not None:
+            data = data[mask]
+        self.mean = torch.nanmean(data)
+        self.var = (data - self.mean).square().nanmean()
 
-    def forward(self, data):
-        zero_mean = data - self.mean.to(data.device)
-        if self.training:
-            zero_mean = torch.nan_to_num(zero_mean)
-        return zero_mean / torch.sqrt(self.var).to(data.device)
+    def forward(self, data: torch.Tensor, mask=None):
+        data = (data - self.mean.to(data.device)) / torch.sqrt(self.var).to(data.device)
+        if mask is not None:
+            return torch.where(mask, data, 0.0)
+        else:
+            return data

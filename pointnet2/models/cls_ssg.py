@@ -1,16 +1,20 @@
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from pointnet2.models.utils import PointNetSetAbstraction
+from pointnet2.models.utils import PointNetSetAbstraction, Transform
 
 
 class get_model(nn.Module):
-    def __init__(self, num_classes, num_dimensions=3):
+    def __init__(self, num_classes, num_dimensions=3, transform=None):
         super(get_model, self).__init__()
-        self.num_dimensions = num_dimensions
+        self.register_buffer('num_classes', torch.tensor(num_classes))
+        self.register_buffer('num_dimensions', torch.tensor(num_dimensions))
+        self.transform = Transform(num_dimensions, transform)
+
         self.sa1 = PointNetSetAbstraction(
             npoint=54, radius=0.2, nsample=28,
-            in_channel=num_dimensions, mlp=(64, 64, 128))
+            in_channel=self.transform.num_dimensions_transformed, mlp=(64, 64, 128))
         self.sa2 = PointNetSetAbstraction(
             npoint=22, radius=0.2, nsample=8,
             in_channel=3 + self.sa1.out_channel, mlp=(64, 64, 128))
@@ -24,8 +28,9 @@ class get_model(nn.Module):
         self.drop2 = nn.Dropout(0.2)
         self.fc3 = nn.Linear(160, num_classes)
 
-    def forward(self, data):
+    def forward(self, data, mask=None):
         B, N, D = data.shape
+        data = self.transform(data, mask)
         in_xyz, in_points = data[..., :3], data[..., 3:]
         l1_xyz, l1_points = self.sa1(in_xyz, in_points)
         l2_xyz, l2_points = self.sa2(l1_xyz, l1_points)

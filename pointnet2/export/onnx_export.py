@@ -13,12 +13,13 @@ def get_model(name: str, *args, **kwargs):
     return module.get_model(*args, **kwargs)
 
 
-def export_model(model, path: Path, input_dummy, infer_shapes=True, infer_shapes_symbolic=True, optimize=True, simplify=True):
+def export_model(model, path: Path, input_dummy, input_names=None,
+                 infer_shapes=True, infer_shapes_symbolic=True, optimize=True, simplify=True):
     torch.onnx.export(
         model,
         input_dummy,
         path,
-        input_names=['input'],
+        input_names=input_names,
         opset_version=13,
         # ONNX nodes contain docstrings mapping back to Torch calls
         verbose=True,
@@ -49,20 +50,3 @@ def export_model(model, path: Path, input_dummy, infer_shapes=True, infer_shapes
         f.write(onnx.helper.printable_graph(onnx_model.graph))
     # Write model to file
     onnx.save(onnx_model, path)
-
-
-def cli():
-    import argparse
-    parser = argparse.ArgumentParser()
-    parser.add_argument('name')
-    parser.add_argument('-o', '--output', type=Path, default=None)
-    args = parser.parse_args()
-    if args.output is None:
-        args.output = Path(args.name).with_suffix('.onnx')
-
-    model = get_model(args.name, num_class=6)
-    export_model(model.eval(), args.output)
-
-
-if __name__ == '__main__':
-    cli()
