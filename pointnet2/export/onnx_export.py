@@ -13,13 +13,14 @@ def get_model(name: str, *args, **kwargs):
     return module.get_model(*args, **kwargs)
 
 
-def export_model(model, path: Path, input_dummy, input_names=None,
+def export_model(model, path: Path, inputs, outputs=None,
                  infer_shapes=True, infer_shapes_symbolic=True, optimize=True, simplify=True):
     torch.onnx.export(
         model,
-        input_dummy,
+        tuple(inputs.values()),
         path,
-        input_names=input_names,
+        input_names=tuple(inputs.keys()),
+        output_names=outputs,
         opset_version=13,
         # ONNX nodes contain docstrings mapping back to Torch calls
         verbose=True,
