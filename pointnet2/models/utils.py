@@ -341,20 +341,20 @@ class Transform(nn.Module):
 
         # Create transformers
         self.transformers = nn.ModuleDict()
-        for dim, (transform_type, feat) in enumerate(zip(types, feats)):
-            if module := self.make_module(transform_type,feat):
+        for dim, (transform_type, feature) in enumerate(zip(types, feats)):
+            if module := self.make_module(transform_type=transform_type, feature=feature):
                 self.transformers.add_module(str(dim), module)
 
     @property
     def num_dimensions_transformed(self):
         return len(self.transformers)
 
-    def make_module(self, transform_type: Type, feat: str) -> Transformer | None:
+    def make_module(self, transform_type: Type, feature: str) -> Transformer | None:
         match transform_type:
             case self.Type.NONE:
                 return Identity()
             case self.Type.Z_SCORE:
-                return ZScorer(feature=feat)
+                return ZScorer(feature=feature)
             case self.Type.MEAN_SUBTRACT:
                 return MeanSubtractor()
 
@@ -450,31 +450,32 @@ class ZScorer(Transformer):
         """
         super().__init__()
         self.feature = feature
+        self._use_precomputed = use_precomputed
         if use_precomputed:
-            stats = self._precomputed[feature]
+            stats = self._precomputed[self.feature]
             self.register_buffer('mean', torch.tensor(stats["mean"]))
-            self.register_buffer('std',  torch.tensor(stats["std"]))
+            self.register_buffer('std', torch.tensor(stats["std"]))
         else:
             # default “un-scaled” start
             self.register_buffer('mean', torch.tensor(0.0))
-            self.register_buffer('std',  torch.tensor(1.0))
+            self.register_buffer('std', torch.tensor(1.0))
 
     def fit(self, data: torch.Tensor, mask=None):
-        # only fit if we didn’t already load precomputed stats
-        if self.mean.item() != 0.0 or self.std.item() != 1.0:
-            raise RuntimeError("Already initialized from precomputed stats")
+        # early exit if we’re using precomputed stats
+        if self._use_precomputed:
+            return self
 
         if mask is not None:
             data = data[mask]
         mean = torch.nanmean(data)
-        var  = torch.nanmean((data - mean).square())
+        var = torch.nanmean((data - mean).square())
 
         self.mean.copy_(mean)
         self.std.copy_(torch.sqrt(var))
 
     def forward(self, data: torch.Tensor, mask=None):
         m = self.mean.to(data.device)
-        s = self.var.to(data.device)
+        s = self.std.to(data.device)
         z = (data - m) / s
         if mask is not None:
             return torch.where(mask, z, torch.tensor(0.0, device=z.device))
