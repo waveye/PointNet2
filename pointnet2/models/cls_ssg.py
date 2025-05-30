@@ -6,11 +6,11 @@ from pointnet2.models.utils import PointNetSetAbstraction, Transform
 
 
 class get_model(nn.Module):
-    def __init__(self, num_classes, num_dimensions=3, transform=None):
+    def __init__(self, num_classes, num_dimensions=3, transform=None, feats=None):
         super(get_model, self).__init__()
         self.register_buffer('num_classes', torch.tensor(num_classes))
         self.register_buffer('num_dimensions', torch.tensor(num_dimensions))
-        self.transform = Transform(num_dimensions, transform)
+        self.transform = Transform(num_dimensions, transform, feats)
 
         self.sa1 = PointNetSetAbstraction(
             npoint=54, radius=0.2, nsample=28,
