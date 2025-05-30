@@ -342,7 +342,7 @@ class Transform(nn.Module):
         # Create transformers
         self.transformers = nn.ModuleDict()
         for dim, (transform_type, feat) in enumerate(zip(types, feats)):
-            if module := self.make_module(transform_type,feats):
+            if module := self.make_module(transform_type,feat):
                 self.transformers.add_module(str(dim), module)
 
     @property
