@@ -15,10 +15,10 @@ class get_model(nn.Module):
         self.unit_cube_normalization = UnitCubeNormalization(eps=1e-6)
 
         self.sa1 = PointNetSetAbstraction(
-            npoint=54, radius=0.1, nsample=28,
+            npoint=54, radius=0.05, nsample=28,
             in_channel=self.transform.num_dimensions_transformed, mlp=(32, 32, 64))
         self.sa2 = PointNetSetAbstraction(
-            npoint=22, radius=0.1, nsample=8,
+            npoint=22, radius=0.05, nsample=8,
             in_channel=3 + self.sa1.out_channel, mlp=(32, 32, 64))
         self.sa3 = PointNetSetAbstraction(
             in_channel=3 + self.sa2.out_channel, mlp=(256, 512, 1024), group_all=True)
