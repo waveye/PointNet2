@@ -34,7 +34,7 @@ class get_model(nn.Module):
     def forward(self, data, mask=None):
         B, N, D = data.shape
         data = self.transform(data, mask) # Feature normalization
-        data = self.unit_sphere_normalization(data) # Coordinate normalization
+        # data = self.unit_sphere_normalization(data) # Coordinate normalization
         in_xyz, in_points = data[..., :3], data[..., 3:]
         l1_xyz, l1_points = self.sa1(in_xyz, in_points)
         l2_xyz, l2_points = self.sa2(l1_xyz, l1_points)
