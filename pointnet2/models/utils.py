@@ -481,3 +481,178 @@ class ZScorer(Transformer):
         if mask is not None:
             return torch.where(mask, z, torch.tensor(0.0, device=z.device))
         return z
+
+
+class UnitSphereNormalization(nn.Module):
+    def __init__(self, eps: float = 1e-6):
+        """
+        A layer that:
+          1) Extracts the first 3 channels of `data` as (x,y,z) coordinates.
+          2) Centers those coordinates and scales them so that
+             the farthest valid point in each cloud lies on the unit sphere.
+          3) Leaves any additional feature channels (beyond the first 3) unchanged,
+             except they are zeroed out where mask == 0 (if mask is provided).
+
+        Args:
+            eps (float): Small epsilon to avoid division by zero if all points collapse.
+        """
+        super().__init__()
+        self.eps = eps
+
+    def forward(self, data: torch.Tensor, mask: torch.Tensor = None) -> torch.Tensor:
+        """
+        Args:
+            data:  Tensor of shape (B, N, F), where F >= 3 (Features).
+                   The first 3 channels are (x, y, z). The remaining (F - 3) channels
+                   are other per-point features (rcs, snr_db, velocity) and remain untouched.
+            mask:  Optional boolean or float tensor of shape (B, N) or (B, N, 1).
+                   Indicates which points are valid (1) vs. invalid (0).
+                   If None, all points are treated as valid.
+
+        Returns:
+            Tensor of shape (B, N, F). For each batch element and each of the N points:
+              - Channels [:, :, :3] contain the centered & unit-sphere‐scaled coordinates.
+              - Channels [:, :, 3:] are unchanged, except zeroed out where mask == 0.
+              - If mask is provided, any point with mask == 0 will have all F features zeroed.
+        """
+        B, N, F = data.shape
+        assert F >= 3, "data.shape[-1] must be at least 3 (for x, y, z)."
+
+        # Split coordinates vs. features
+        coords = data[..., :3]  # shape (B, N, 3)
+        features = data[..., 3:]  # shape (B, N, F - 3), may be empty if F == 3
+
+        # If no mask was provided, create one by checking for all-zero rows:
+        if mask is None:
+            mask_bool = torch.any(data != 0, dim=-1, keepdim=True)  # → (B, N, 1)
+            mask = mask_bool.float()  # convert to float
+
+        # Ensure mask has right dimension
+        if mask.dim() == 2:
+            mask = mask.unsqueeze(-1)  # → (B, N, 1)
+
+        # Split coords vs. extras
+        coords = data[..., :3]  # (B, N, 3)
+        extras = data[..., 3:]  # (B, N, F-3) or empty if F == 3
+
+        # Compute masked centroid of the first 3 dims:
+        masked_sum = torch.sum(coords * mask, dim=1, keepdim=True)  # (B, 1, 3)
+        masked_count = torch.sum(mask, dim=1, keepdim=True)  # (B, 1, 1)
+        masked_count = masked_count.clamp(min=self.eps)  # avoid /0
+        centroid = masked_sum / masked_count  # (B, 1, 3)
+
+        # Subtract centroid from all coords
+        centered = coords - centroid  # (B, N, 3)
+
+        # Zero out invalid points before computing distances -> avoid comp overhead
+        centered_masked = centered * mask  # (B, N, 3)
+
+        # Radial distance of each valid point to origin
+        dists = torch.norm(centered_masked, p=2, dim=2)  # (B, N)
+
+        # Max distance per batch element
+        max_dist, _ = torch.max(dists, dim=1, keepdim=True)  # (B, 1)
+        max_dist = max_dist.clamp(min=self.eps)  # avoid /0
+
+        # Scale all centered coords by that radius
+        scaled = centered / max_dist.unsqueeze(-1)  # (B, N, 3)
+
+        # Zero out any invalid coords
+        normalized_coords = scaled * mask  # (B, N, 3)
+
+        # Also zero out extras wherever mask == 0
+        out_extras = extras * mask  # (B, N, F-3) or empty
+
+        # 9) Re‐assemble full feature tensor
+        if F == 3:
+            return normalized_coords
+        else:
+            return torch.cat([normalized_coords, out_extras], dim=-1)
+
+
+class UnitCubeNormalization(nn.Module):
+    def __init__(self, eps: float = 1e-6):
+        """
+        A layer that:
+          1) Extracts the first 3 channels of `data` as (x,y,z) coordinates.
+          2) Centers those coordinates (optionally masked) and then scales each axis
+             independently so that, for each cloud, the maximum absolute value along x, y,
+             and z becomes 1. This effectively fits the points into the axis-aligned cube
+             [-1, 1]^3.
+          3) Leaves any additional feature channels (beyond the first 3) unchanged,
+             except they are zeroed out where mask == 0 (if mask is provided).
+
+        Args:
+            eps (float): Small epsilon to avoid division by zero if all points collapse
+                         or if an axis has zero dynamic range.
+        """
+        super().__init__()
+        self.eps = eps
+
+    def forward(self, data: torch.Tensor, mask: torch.Tensor = None) -> torch.Tensor:
+        """
+        Args:
+            data:  Tensor of shape (B, N, F), where F >= 3 (Features).
+                   The first 3 channels are (x, y, z). The remaining (F - 3) channels
+                   are other per-point features (e.g., rcs, snr_db, velocity) and remain untouched.
+            mask:  Optional boolean or float tensor of shape (B, N) or (B, N, 1).
+                   Indicates which points are valid (1) vs. invalid (0).
+                   If None, all points are treated as valid.
+
+        Returns:
+            Tensor of shape (B, N, F). For each batch element and each of the N points:
+              - Channels [:, :, :3] contain the centered & unit-cube‐scaled coordinates.
+              - Channels [:, :, 3:] are unchanged, except zeroed out where mask == 0.
+              - If mask is provided, any point with mask == 0 will have all F features zeroed.
+        """
+        B, N, F = data.shape
+        assert F >= 3, "data.shape[-1] must be at least 3 (for x, y, z)."
+
+        # Split coordinates vs. features
+        coords = data[..., :3]  # shape (B, N, 3)
+        extras = data[..., 3:]  # shape (B, N, F - 3), may be empty if F == 3
+
+        # If no mask was provided, create one by checking for all-zero rows
+        if mask is None:
+            mask_bool = torch.any(data != 0, dim=-1, keepdim=True)  # → (B, N, 1)
+            mask = mask_bool.float()
+
+        # Ensure mask has shape (B, N, 1)
+        if mask.dim() == 2:
+            mask = mask.unsqueeze(-1)  # → (B, N, 1)
+        else:
+            assert mask.shape[2] == 1, "mask must have shape (B, N) or (B, N, 1)"
+
+        # 1) Compute masked centroid of the first 3 dims:
+        masked_sum = torch.sum(coords * mask, dim=1, keepdim=True)  # → (B, 1, 3)
+        masked_count = torch.sum(mask, dim=1, keepdim=True)  # → (B, 1, 1)
+        masked_count = masked_count.clamp(min=self.eps)  # avoid divide-by-zero
+        centroid = masked_sum / masked_count  # → (B, 1, 3)
+
+        # 2) Subtract centroid from all coords
+        centered = coords - centroid  # → (B, N, 3)
+
+        # 3) Zero out invalid points before computing per-axis max
+        centered_masked = centered * mask  # → (B, N, 3)
+
+        # 4) For each axis, find the maximum absolute coordinate among valid points:
+        #    abs_centered_masked has shape (B, N, 3). We want max over N → (B, 3).
+        max_abs_per_axis, _ = torch.max(torch.abs(centered_masked), dim=1)  # → (B, 3)
+        max_abs_per_axis = max_abs_per_axis.clamp(min=self.eps)  # avoid /0
+
+        # 5) Scale each axis independently by its max_abs to fit into [-1, 1]
+        #    Reshape to (B, 1, 3) to broadcast over N:
+        scale = max_abs_per_axis.unsqueeze(1)  # → (B, 1, 3)
+        scaled = centered / scale  # → (B, N, 3)
+
+        # 6) Zero out invalid coords
+        normalized_coords = scaled * mask  # → (B, N, 3)
+
+        # 7) Also zero out extras wherever mask == 0
+        out_extras = extras * mask  # → (B, N, F - 3) or empty
+
+        # 8) Re‐assemble full feature tensor
+        if F == 3:
+            return normalized_coords
+        else:
+            return torch.cat([normalized_coords, out_extras], dim=-1)

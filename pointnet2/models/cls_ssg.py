@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from pointnet2.models.utils import PointNetSetAbstraction, Transform
+from pointnet2.models.utils import PointNetSetAbstraction, Transform, UnitSphereNormalization, UnitCubeNormalization
 
 
 class get_model(nn.Module):
@@ -11,6 +11,8 @@ class get_model(nn.Module):
         self.register_buffer('num_classes', torch.tensor(num_classes))
         self.register_buffer('num_dimensions', torch.tensor(num_dimensions))
         self.transform = Transform(num_dimensions, transform, feats)
+        self.unit_sphere_normalization = UnitSphereNormalization(eps=1e-6)
+        self.unit_cube_normalization = UnitCubeNormalization(eps=1e-6)
 
         self.sa1 = PointNetSetAbstraction(
             npoint=54, radius=0.2, nsample=28,
@@ -23,15 +25,16 @@ class get_model(nn.Module):
         self.fc1 = nn.Linear(self.sa3.out_channel, 256)
         self.bn1 = nn.BatchNorm1d(256,
                                   momentum=0.01)  # Aligned with tf_pipeline -> tf: momentum=0.0; torch: momentum=1.0
-        self.drop1 = nn.Dropout(0.3)
-        self.fc2 = nn.Linear(256, 128) # Aligned with tf_pipeline -> Reduced from 576 to 256
+        self.drop1 = nn.Dropout(0.2)
+        self.fc2 = nn.Linear(256, 128)  # Aligned with tf_pipeline -> Reduced from 576 to 256
         self.bn2 = nn.BatchNorm1d(128, momentum=0.01)
-        self.drop2 = nn.Dropout(0.3)
-        self.fc3 = nn.Linear(128, num_classes) # Aligned with tf_pipeline -> Reduced from 160 to 128
+        self.drop2 = nn.Dropout(0.2)
+        self.fc3 = nn.Linear(128, num_classes)  # Aligned with tf_pipeline -> Reduced from 160 to 128
 
     def forward(self, data, mask=None):
         B, N, D = data.shape
-        data = self.transform(data, mask)
+        data = self.transform(data, mask) # Feature normalization
+        data = self.unit_sphere_normalization(data) # Coordinate normalization
         in_xyz, in_points = data[..., :3], data[..., 3:]
         l1_xyz, l1_points = self.sa1(in_xyz, in_points)
         l2_xyz, l2_points = self.sa2(l1_xyz, l1_points)
