@@ -16,10 +16,10 @@ class get_model(nn.Module):
 
         self.sa1 = PointNetSetAbstraction(
             npoint=54, radius=0.1, nsample=28,
-            in_channel=self.transform.num_dimensions_transformed, mlp=(64, 64, 128))
+            in_channel=self.transform.num_dimensions_transformed, mlp=(32, 32, 64))
         self.sa2 = PointNetSetAbstraction(
             npoint=22, radius=0.1, nsample=8,
-            in_channel=3 + self.sa1.out_channel, mlp=(64, 64, 128))
+            in_channel=3 + self.sa1.out_channel, mlp=(32, 32, 64))
         self.sa3 = PointNetSetAbstraction(
             in_channel=3 + self.sa2.out_channel, mlp=(256, 512, 1024), group_all=True)
         self.fc1 = nn.Linear(self.sa3.out_channel, 256)
