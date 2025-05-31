@@ -21,7 +21,7 @@ class get_model(nn.Module):
             npoint=22, radius=0.05, nsample=8,
             in_channel=3 + self.sa1.out_channel, mlp=(32, 32, 64))
         self.sa3 = PointNetSetAbstraction(
-            in_channel=3 + self.sa2.out_channel, mlp=(256, 512, 1024), group_all=True)
+            in_channel=3 + self.sa2.out_channel, mlp=(64, 128, 256), group_all=True)
         self.fc1 = nn.Linear(self.sa3.out_channel, 128)
         self.bn1 = nn.BatchNorm1d(128,
                                   momentum=0.01)  # Aligned with tf_pipeline -> tf: momentum=0.0; torch: momentum=1.0
