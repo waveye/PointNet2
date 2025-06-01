@@ -15,10 +15,10 @@ class get_model(nn.Module):
         self.unit_cube_normalization = UnitCubeNormalization(eps=1e-6)
 
         self.sa1 = PointNetSetAbstraction(
-            npoint=80, radius=0.05, nsample=20,
+            npoint=60, radius=0.05, nsample=15,
             in_channel=self.transform.num_dimensions_transformed, mlp=(32, 32, 64))
         self.sa2 = PointNetSetAbstraction(
-            npoint=40, radius=0.1, nsample=30,
+            npoint=30, radius=0.1, nsample=20,
             in_channel=3 + self.sa1.out_channel, mlp=(32, 32, 64))
         self.sa3 = PointNetSetAbstraction(
             in_channel=3 + self.sa2.out_channel, mlp=(128, 256, 512), group_all=True)
@@ -29,7 +29,7 @@ class get_model(nn.Module):
         self.fc2 = nn.Linear(128, 64)  # Aligned with tf_pipeline -> Reduced from 576 to 256
         self.bn2 = nn.BatchNorm1d(64, momentum=0.1)
         self.drop2 = nn.Dropout(0.2)
-        self.fc3 = nn.Linear(128, num_classes)  # Aligned with tf_pipeline -> Reduced from 160 to 128
+        self.fc3 = nn.Linear(64, num_classes)  # Aligned with tf_pipeline -> Reduced from 160 to 128
 
     def forward(self, data, mask=None):
         B, N, D = data.shape
@@ -41,7 +41,7 @@ class get_model(nn.Module):
         l3_xyz, l3_points = self.sa3(l2_xyz, l2_points)
         x = l3_points.view(B, 512)
         x = self.drop1(F.relu(self.bn1(self.fc1(x))))
-        # x = self.drop2(F.relu(self.bn2(self.fc2(x))))
+        x = self.drop2(F.relu(self.bn2(self.fc2(x))))
         x = self.fc3(x)
         x = F.log_softmax(x, -1)
 
