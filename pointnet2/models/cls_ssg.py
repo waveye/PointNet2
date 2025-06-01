@@ -25,10 +25,10 @@ class get_model(nn.Module):
         self.fc1 = nn.Linear(self.sa3.out_channel, 128)
         self.bn1 = nn.BatchNorm1d(128,
                                   momentum=0.1)
-        self.drop1 = nn.Dropout(0.3)
+        self.drop1 = nn.Dropout(0.2)
         self.fc2 = nn.Linear(128, 64)  # Aligned with tf_pipeline -> Reduced from 576 to 256
         self.bn2 = nn.BatchNorm1d(64, momentum=0.1)
-        self.drop2 = nn.Dropout(0.3)
+        self.drop2 = nn.Dropout(0.2)
         self.fc3 = nn.Linear(64, num_classes)  # Aligned with tf_pipeline -> Reduced from 160 to 128
 
     def forward(self, data, mask=None):
