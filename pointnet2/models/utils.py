@@ -170,10 +170,12 @@ class PointNetSetAbstraction(nn.Module):
         self.nsample = nsample
         self.mlp_convs = nn.ModuleList()
         self.mlp_bns = nn.ModuleList()
+        self.mlp_dps = nn.ModuleList()
         last_channel = in_channel
         for out_channel in mlp:
             self.mlp_convs.append(nn.Conv2d(last_channel, out_channel, 1))
-            self.mlp_bns.append(nn.BatchNorm2d(out_channel, momentum=0.01))
+            self.mlp_bns.append(nn.BatchNorm2d(out_channel, momentum=0.1))
+            self.mlp_dps.append(nn.Dropout(p=0.2))
             last_channel = out_channel
         self.out_channel = last_channel
         self.group_all = group_all
@@ -194,8 +196,9 @@ class PointNetSetAbstraction(nn.Module):
         # new_xyz: sampled points position data, [B, npoint, C]
         # new_points: sampled points data, [B, npoint, nsample, C+D]
         new_points = new_points.permute(0, 3, 2, 1)  # [B, C+D, nsample, npoint]
-        for bn, conv in zip(self.mlp_bns, self.mlp_convs):
+        for bn, conv, dp in zip(self.mlp_bns, self.mlp_convs, self.mlp_dps):
             new_points = F.relu(bn(conv(new_points)))
+            new_points = dp(new_points)
         new_points = torch.max(new_points, 2)[0]
         return new_xyz, new_points.permute(0, 2, 1)
 
