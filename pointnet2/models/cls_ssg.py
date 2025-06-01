@@ -16,20 +16,20 @@ class get_model(nn.Module):
 
         self.sa1 = PointNetSetAbstraction(
             npoint=60, radius=0.05, nsample=15,
-            in_channel=self.transform.num_dimensions_transformed, mlp=(8, 8, 16))
+            in_channel=self.transform.num_dimensions_transformed, mlp=(16, 16, 32))
         self.sa2 = PointNetSetAbstraction(
             npoint=30, radius=0.1, nsample=20,
             in_channel=3 + self.sa1.out_channel, mlp=(16, 16, 32))
         self.sa3 = PointNetSetAbstraction(
-            in_channel=3 + self.sa2.out_channel, mlp=(32, 64, 128), group_all=True)
-        self.fc1 = nn.Linear(self.sa3.out_channel, 64)
-        self.bn1 = nn.BatchNorm1d(64,
+            in_channel=3 + self.sa2.out_channel, mlp=(64, 128, 256), group_all=True)
+        self.fc1 = nn.Linear(self.sa3.out_channel, 128)
+        self.bn1 = nn.BatchNorm1d(128,
                                   momentum=0.1)
         self.drop1 = nn.Dropout(0.3)
-        self.fc2 = nn.Linear(64, 32)  # Aligned with tf_pipeline -> Reduced from 576 to 256
-        self.bn2 = nn.BatchNorm1d(32, momentum=0.1)
+        self.fc2 = nn.Linear(128, 64)  # Aligned with tf_pipeline -> Reduced from 576 to 256
+        self.bn2 = nn.BatchNorm1d(64, momentum=0.1)
         self.drop2 = nn.Dropout(0.3)
-        self.fc3 = nn.Linear(32, num_classes)  # Aligned with tf_pipeline -> Reduced from 160 to 128
+        self.fc3 = nn.Linear(64, num_classes)  # Aligned with tf_pipeline -> Reduced from 160 to 128
 
     def forward(self, data, mask=None):
         B, N, D = data.shape
@@ -39,7 +39,7 @@ class get_model(nn.Module):
         l1_xyz, l1_points = self.sa1(in_xyz, in_points)
         l2_xyz, l2_points = self.sa2(l1_xyz, l1_points)
         l3_xyz, l3_points = self.sa3(l2_xyz, l2_points)
-        x = l3_points.view(B, 128)
+        x = l3_points.view(B, 256)
         x = self.drop1(F.relu(self.bn1(self.fc1(x))))
         x = self.drop2(F.relu(self.bn2(self.fc2(x))))
         x = self.fc3(x)
