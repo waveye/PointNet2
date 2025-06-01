@@ -175,7 +175,7 @@ class PointNetSetAbstraction(nn.Module):
         for out_channel in mlp:
             self.mlp_convs.append(nn.Conv2d(last_channel, out_channel, 1))
             self.mlp_bns.append(nn.BatchNorm2d(out_channel, momentum=0.1))
-            self.mlp_dps.append(nn.Dropout(p=0.2))
+            self.mlp_dps.append(nn.Dropout(p=0.1))
             last_channel = out_channel
         self.out_channel = last_channel
         self.group_all = group_all
