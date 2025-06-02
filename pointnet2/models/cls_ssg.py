@@ -14,9 +14,9 @@ class get_model(nn.Module):
         # self.unit_sphere_normalization = UnitSphereNormalization(eps=1e-6)
         # self.unit_cube_normalization = UnitCubeNormalization(eps=1e-6)
 
-        self.r1 = 0.05
-        self.r2 = 0.12
-        self.npoint1 = 50
+        self.r1 = 0.025
+        self.r2 = 0.1
+        self.npoint1 = 80
         self.npoint2 = 30
         self.nsample1 = 10
         self.nsample2 = 20
