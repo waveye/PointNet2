@@ -14,76 +14,20 @@ class get_model(nn.Module):
         # self.unit_sphere_normalization = UnitSphereNormalization(eps=1e-6)
         # self.unit_cube_normalization = UnitCubeNormalization(eps=1e-6)
 
-        # Run 30
-        # self.r1 = 0.025
-        # self.r2 = 0.1
-        # self.npoint1 = 50
-        # self.npoint2 = 30
-        # self.nsample1 = 10
-        # self.nsample2 = 20
-        # self.mlp1 = (64, 64, 128)
-        # self.mlp2 = (64, 64, 128)
-        # self.mlp3 = (128, 256, 512)
-        # self.fc1_out = 128
-        # self.fc2_out = 64
-        # self.sa_dropout = 0.2
-        # self.fc_dropout = 0.3
-
-        # Run 31
-        # self.r1 = 0.2
-        # self.r2 = 0.2
-        # self.npoint1 = 54
-        # self.npoint2 = 22
-        # self.nsample1 = 28
-        # self.nsample2 = 8
-        # self.mlp1 = (64, 64, 128)
-        # self.mlp2 = (64, 64, 128)
-        # self.mlp3 = (128, 256, 1024)
-        # self.fc1_out = 576
-        # self.fc2_out = 160
-        # self.sa_dropout = 0.0
-        # self.fc_dropout = 0.2
-
-        # # Run 32
-        # self.r1 = 0.025
-        # self.r2 = 0.1
-        # self.npoint1 = 50
-        # self.npoint2 = 30
-        # self.nsample1 = 10
-        # self.nsample2 = 20
-        # self.mlp1 = (64, 64, 128)
-        # self.mlp2 = (64, 64, 128)
-        # self.mlp3 = (128, 256, 512)
-        # self.fc1_out = 128
-        # self.fc2_out = 64
-        # self.sa_dropout = 0.0
-        # self.fc_dropout = 0.3
-
-        # # Run 33
-        # self.r1 = 0.1
-        # self.r2 = 0.4
-        # self.npoint1 = 50
-        # self.npoint2 = 30
-        # self.nsample1 = 10
-        # self.nsample2 = 20
-        # self.mlp1 = (64, 64, 128)
-        # self.mlp2 = (64, 64, 128)
-        # self.mlp3 = (128, 256, 512)
-        # self.fc1_out = 128
-        # self.fc2_out = 64
-        # self.sa_dropout = 0.0
-        # self.fc_dropout = 0.3
-
-        # Run 3
+        # Config
         self.r1 = 0.05
-        self.r2 = 0.4
+        self.r2 = 0.15
+        self.r3 = 0.4
         self.npoint1 = 50
         self.npoint2 = 30
+        self.npoint3 = 15
         self.nsample1 = 10
         self.nsample2 = 20
+        self.nsample3 = 15
         self.mlp1 = (64, 64, 128)
         self.mlp2 = (64, 64, 128)
-        self.mlp3 = (128, 256, 512)
+        self.mlp3 = (64, 64, 128)
+        self.mlp4 = (128, 256, 512)
         self.fc1_out = 128
         self.fc2_out = 64
         self.sa_dropout = 0.0
@@ -96,8 +40,11 @@ class get_model(nn.Module):
             npoint=self.npoint2, radius=self.r2, nsample=self.nsample2,
             in_channel=3 + self.sa1.out_channel, mlp=self.mlp2, dropout=self.sa_dropout)
         self.sa3 = PointNetSetAbstraction(
-            in_channel=3 + self.sa2.out_channel, mlp=self.mlp3, group_all=True, dropout=self.sa_dropout)
-        self.fc1 = nn.Linear(self.sa3.out_channel, self.fc1_out)
+            npoint=self.npoint2, radius=self.r3, nsample=self.nsample3,
+            in_channel=3 + self.sa2.out_channel, mlp=self.mlp3, dropout=self.sa_dropout)
+        self.sa4 = PointNetSetAbstraction(
+            in_channel=3 + self.sa3.out_channel, mlp=self.mlp4, group_all=True, dropout=self.sa_dropout)
+        self.fc1 = nn.Linear(self.sa4.out_channel, self.fc1_out)
         self.bn1 = nn.BatchNorm1d(self.fc1_out,
                                   momentum=0.1)
         self.drop1 = nn.Dropout(self.fc_dropout)
@@ -109,12 +56,12 @@ class get_model(nn.Module):
     def forward(self, data, mask=None):
         B, N, D = data.shape
         data = self.transform(data, mask)  # Feature normalization
-        # data = self.unit_sphere_normalization(data) # Coordinate normalization
         in_xyz, in_points = data[..., :3], data[..., 3:]
         l1_xyz, l1_points = self.sa1(in_xyz, in_points)
         l2_xyz, l2_points = self.sa2(l1_xyz, l1_points)
         l3_xyz, l3_points = self.sa3(l2_xyz, l2_points)
-        x = l3_points.view(B, self.mlp3[-1])
+        l4_xyz, l4_points = self.sa4(l3_xyz, l3_points)
+        x = l4_points.view(B, self.mlp4[-1])
         x = self.drop1(F.relu(self.bn1(self.fc1(x))))
         x = self.drop2(F.relu(self.bn2(self.fc2(x))))
         x = self.fc3(x)
