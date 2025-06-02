@@ -49,7 +49,7 @@ class get_model(nn.Module):
         self.r2 = 0.1
         self.npoint1 = 50
         self.npoint2 = 30
-        self.nsample1 = 30
+        self.nsample1 = 10
         self.nsample2 = 20
         self.mlp1 = (64, 64, 128)
         self.mlp2 = (64, 64, 128)
