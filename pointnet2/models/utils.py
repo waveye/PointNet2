@@ -163,14 +163,14 @@ class PointNetSetAbstraction(nn.Module):
     radius: float
     nsample: int
 
-    def __init__(self, npoint=0, radius=0.0, nsample=0, in_channel=3, mlp=(), group_all: bool = False):
+    def __init__(self, npoint=0, radius=0.0, nsample=0, in_channel=3, mlp=(), group_all: bool = False, dropout: float = 0.2):
         super(PointNetSetAbstraction, self).__init__()
         self.npoint = npoint
         self.radius = radius
         self.nsample = nsample
         self.mlp_convs = nn.ModuleList()
         self.mlp_bns = nn.ModuleList()
-        self.dp = nn.Dropout(0.2)
+        self.dp = nn.Dropout(p=dropout)
         last_channel = in_channel
         for out_channel in mlp:
             self.mlp_convs.append(nn.Conv2d(last_channel, out_channel, 1))
