@@ -44,9 +44,24 @@ class get_model(nn.Module):
         # self.sa_dropout = 0.0
         # self.fc_dropout = 0.2
 
-        # Run 32
-        self.r1 = 0.025
-        self.r2 = 0.1
+        # # Run 32
+        # self.r1 = 0.025
+        # self.r2 = 0.1
+        # self.npoint1 = 50
+        # self.npoint2 = 30
+        # self.nsample1 = 10
+        # self.nsample2 = 20
+        # self.mlp1 = (64, 64, 128)
+        # self.mlp2 = (64, 64, 128)
+        # self.mlp3 = (128, 256, 512)
+        # self.fc1_out = 128
+        # self.fc2_out = 64
+        # self.sa_dropout = 0.0
+        # self.fc_dropout = 0.3
+
+        # Run 33
+        self.r1 = 0.1
+        self.r2 = 0.4
         self.npoint1 = 50
         self.npoint2 = 30
         self.nsample1 = 10
