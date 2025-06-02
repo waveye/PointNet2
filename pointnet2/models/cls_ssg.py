@@ -38,7 +38,7 @@ class get_model(nn.Module):
         self.mlp3 = (128, 256, 1024)
         self.fc1_out = 576
         self.fc2_out = 160
-        self.sa_dropout = 0.2
+        self.sa_dropout = 0.0
         self.fc_dropout = 0.2
 
         self.sa1 = PointNetSetAbstraction(
