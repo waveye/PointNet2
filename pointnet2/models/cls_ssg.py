@@ -14,6 +14,7 @@ class get_model(nn.Module):
         # self.unit_sphere_normalization = UnitSphereNormalization(eps=1e-6)
         # self.unit_cube_normalization = UnitCubeNormalization(eps=1e-6)
 
+        # Run 30
         # self.r1 = 0.025
         # self.r2 = 0.1
         # self.npoint1 = 50
@@ -27,19 +28,36 @@ class get_model(nn.Module):
         # self.fc2_out = 64
         # self.sa_dropout = 0.2
         # self.fc_dropout = 0.3
-        self.r1 = 0.2
-        self.r2 = 0.2
-        self.npoint1 = 54
-        self.npoint2 = 22
-        self.nsample1 = 28
-        self.nsample2 = 8
+
+        # Run 31
+        # self.r1 = 0.2
+        # self.r2 = 0.2
+        # self.npoint1 = 54
+        # self.npoint2 = 22
+        # self.nsample1 = 28
+        # self.nsample2 = 8
+        # self.mlp1 = (64, 64, 128)
+        # self.mlp2 = (64, 64, 128)
+        # self.mlp3 = (128, 256, 1024)
+        # self.fc1_out = 576
+        # self.fc2_out = 160
+        # self.sa_dropout = 0.0
+        # self.fc_dropout = 0.2
+
+        # Run 32
+        self.r1 = 0.025
+        self.r2 = 0.1
+        self.npoint1 = 50
+        self.npoint2 = 30
+        self.nsample1 = 30
+        self.nsample2 = 20
         self.mlp1 = (64, 64, 128)
         self.mlp2 = (64, 64, 128)
-        self.mlp3 = (128, 256, 1024)
-        self.fc1_out = 576
-        self.fc2_out = 160
+        self.mlp3 = (128, 256, 512)
+        self.fc1_out = 128
+        self.fc2_out = 64
         self.sa_dropout = 0.0
-        self.fc_dropout = 0.2
+        self.fc_dropout = 0.3
 
         self.sa1 = PointNetSetAbstraction(
             npoint=self.npoint1, radius=self.r1, nsample=self.nsample1,
