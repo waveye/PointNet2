@@ -11,25 +11,34 @@ class get_model(nn.Module):
         self.register_buffer('num_classes', torch.tensor(num_classes))
         self.register_buffer('num_dimensions', torch.tensor(num_dimensions))
         self.transform = Transform(num_dimensions, transform, feats)
-        self.unit_sphere_normalization = UnitSphereNormalization(eps=1e-6)
-        self.unit_cube_normalization = UnitCubeNormalization(eps=1e-6)
+        # self.unit_sphere_normalization = UnitSphereNormalization(eps=1e-6)
+        # self.unit_cube_normalization = UnitCubeNormalization(eps=1e-6)
+
+        self.r1 = 0.2
+        self.r2 = 2 * self.r1
+        self.npoint1 = 100
+        self.npoint2 = 50
+        self.nsample1 = 20
+        self.nsample2 = 40
+        self.fc1_out = 256
+        self.fc2_out = 128
 
         self.sa1 = PointNetSetAbstraction(
-            npoint=60, radius=0.1, nsample=8,
+            npoint=self.npoint1, radius=self.r1, nsample=self.nsample1,
             in_channel=self.transform.num_dimensions_transformed, mlp=(64, 64, 128))
         self.sa2 = PointNetSetAbstraction(
-            npoint=30, radius=0.2, nsample=10,
+            npoint=self.npoint2, radius=self.r2, nsample=self.nsample2,
             in_channel=3 + self.sa1.out_channel, mlp=(64, 64, 128))
         self.sa3 = PointNetSetAbstraction(
             in_channel=3 + self.sa2.out_channel, mlp=(256, 512, 1024), group_all=True)
-        self.fc1 = nn.Linear(self.sa3.out_channel, 256)
-        self.bn1 = nn.BatchNorm1d(256,
+        self.fc1 = nn.Linear(self.sa3.out_channel, self.fc1_out)
+        self.bn1 = nn.BatchNorm1d(self.fc1_out,
                                   momentum=0.1)
         self.drop1 = nn.Dropout(0.2)
-        self.fc2 = nn.Linear(256, 128)  # Aligned with tf_pipeline -> Reduced from 576 to 256
-        self.bn2 = nn.BatchNorm1d(128, momentum=0.1)
+        self.fc2 = nn.Linear(self.fc1_out, self.fc2_out)  # Aligned with tf_pipeline -> Reduced from 576 to 256
+        self.bn2 = nn.BatchNorm1d(self.fc2_out, momentum=0.1)
         self.drop2 = nn.Dropout(0.2)
-        self.fc3 = nn.Linear(128, num_classes)  # Aligned with tf_pipeline -> Reduced from 160 to 128
+        self.fc3 = nn.Linear(self.fc2_out, num_classes)  # Aligned with tf_pipeline -> Reduced from 160 to 128
 
     def forward(self, data, mask=None):
         B, N, D = data.shape
