@@ -18,8 +18,8 @@ class get_model(nn.Module):
         self.r1 = 0.025
         self.r2 = 0.1
         self.r3 = 0.4
-        self.npoint1 = 80
-        self.npoint2 = 40
+        self.npoint1 = 50
+        self.npoint2 = 30
         self.npoint3 = 15
         self.nsample1 = 10
         self.nsample2 = 15
