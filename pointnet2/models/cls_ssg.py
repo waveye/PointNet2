@@ -15,15 +15,15 @@ class get_model(nn.Module):
         # self.unit_cube_normalization = UnitCubeNormalization(eps=1e-6)
 
         # Config
-        self.r1 = 0.05
-        self.r2 = 0.15
+        self.r1 = 0.025
+        self.r2 = 0.1
         self.r3 = 0.4
-        self.npoint1 = 50
-        self.npoint2 = 30
+        self.npoint1 = 80
+        self.npoint2 = 40
         self.npoint3 = 15
         self.nsample1 = 10
-        self.nsample2 = 20
-        self.nsample3 = 15
+        self.nsample2 = 15
+        self.nsample3 = 10
         self.mlp1 = (64, 64, 128)
         self.mlp2 = (64, 64, 128)
         self.mlp3 = (64, 64, 128)
