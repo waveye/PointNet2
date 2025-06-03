@@ -6,11 +6,11 @@ from pointnet2.models.utils import PointNetSetAbstraction, Transform, UnitSphere
 
 
 class get_model(nn.Module):
-    def __init__(self, num_classes, num_dimensions=3, transform=None, feats=None):
+    def __init__(self, num_classes, num_dimensions=3, transform=None):
         super(get_model, self).__init__()
         self.register_buffer('num_classes', torch.tensor(num_classes))
         self.register_buffer('num_dimensions', torch.tensor(num_dimensions))
-        self.transform = Transform(num_dimensions, transform, feats)
+        self.transform = Transform(num_dimensions, transform)
         # self.unit_sphere_normalization = UnitSphereNormalization(eps=1e-6)
         # self.unit_cube_normalization = UnitCubeNormalization(eps=1e-6)
 
