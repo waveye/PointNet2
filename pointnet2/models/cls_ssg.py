@@ -15,9 +15,9 @@ class get_model(nn.Module):
         # self.unit_cube_normalization = UnitCubeNormalization(eps=1e-6)
 
         # Config
-        self.r1 = 0.025
-        self.r2 = 0.1
-        self.r3 = 0.4
+        self.r1 = 0.1
+        self.r2 = 0.2
+        self.r3 = 0.5
         self.npoint1 = 50
         self.npoint2 = 30
         self.npoint3 = 15
