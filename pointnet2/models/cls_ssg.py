@@ -13,26 +13,25 @@ class get_model(nn.Module):
         self.transform = Transform(num_dimensions, transform)
 
         # Config
-        self.r1 = 0.025
-        self.r2 = 0.1
-        self.radius_absolute = False
-        self.npoint1 = 54
-        self.npoint2 = 22
-        self.nsample1 = 28
-        self.nsample2 = 8
+        self.r1 = 0.1
+        self.r2 = 0.2
+        self.npoint1 = 50
+        self.npoint2 = 30
+        self.nsample1 = 10
+        self.nsample2 = 20
         self.mlp1 = (64, 64, 128)
         self.mlp2 = (64, 64, 128)
-        self.mlp3 = (256, 512, 1024)
-        self.fc1_out = 576
-        self.fc2_out = 160
+        self.mlp3 = (128, 256, 512)
+        self.fc1_out = 128
+        self.fc2_out = 64
         self.fc_dropout = 0.2
 
         self.sa1 = PointNetSetAbstraction(
             npoint=self.npoint1, radius=self.r1, nsample=self.nsample1,
-            in_channel=self.transform.num_dimensions_transformed, mlp=self.mlp1, radius_absolute=self.radius_absolute)
+            in_channel=self.transform.num_dimensions_transformed, mlp=self.mlp1, radius_absolute=False)
         self.sa2 = PointNetSetAbstraction(
             npoint=self.npoint2, radius=self.r2, nsample=self.nsample2,
-            in_channel=3 + self.sa1.out_channel, mlp=self.mlp2, radius_absolute=self.radius_absolute)
+            in_channel=3 + self.sa1.out_channel, mlp=self.mlp2, radius_absolute=False)
         self.sa3 = PointNetSetAbstraction(
             in_channel=3 + self.sa2.out_channel, mlp=self.mlp3, group_all=True)
         self.fc1 = nn.Linear(self.sa3.out_channel, self.fc1_out)
@@ -48,14 +47,15 @@ class get_model(nn.Module):
         B, N, D = data.shape
 
         coords = data[:, :, :3]
-        var_per_dim = coords.var(dim=1, unbiased=False)
-        max_var_per_batch, _ = var_per_dim.max(dim=1)
+        var_per_dim = coords.std(dim=1, unbiased=False)
+        max_std_per_probe, _ = 2 * var_per_dim.max(
+            dim=1)  # Two times the max std along the dimensions for every cluster as reference for radius
 
         data = self.transform(data, mask)  # Feature normalization
         in_xyz, in_points = data[..., :3], data[..., 3:]
-        l1_xyz, l1_points = self.sa1(in_xyz, in_points, max_var_per_batch)
-        l2_xyz, l2_points = self.sa2(l1_xyz, l1_points, max_var_per_batch)
-        l3_xyz, l3_points = self.sa3(l2_xyz, l2_points, max_var_per_batch)
+        l1_xyz, l1_points = self.sa1(in_xyz, in_points, max_std_per_probe)
+        l2_xyz, l2_points = self.sa2(l1_xyz, l1_points, max_std_per_probe)
+        l3_xyz, l3_points = self.sa3(l2_xyz, l2_points, max_std_per_probe)
         x = l3_points.view(B, self.mlp3[-1])
         x = self.drop1(F.relu(self.bn1(self.fc1(x))))
         x = self.drop2(F.relu(self.bn2(self.fc2(x))))
