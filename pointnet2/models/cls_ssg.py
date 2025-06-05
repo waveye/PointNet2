@@ -16,8 +16,8 @@ class get_model(nn.Module):
         self.absolute_radius = False
         # If absolute_radius=False: r1 / r2 are fractions of 2*max_std_variance (max of std_x, std_y, std_z) of a sample
         # If absolute_radius=True: r1 / r2 are absolute radii for ball query
-        self.r1 = 0.2
-        self.r2 = 0.4
+        self.r1 = 0.25
+        self.r2 = 0.8
         self.npoint1 = 50
         self.npoint2 = 30
         self.nsample1 = 10
