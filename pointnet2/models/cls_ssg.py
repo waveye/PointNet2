@@ -48,8 +48,8 @@ class get_model(nn.Module):
         B, N, D = data.shape
 
         coords = data[:, :, :3]
-        var_per_channel = coords.var(dim=1, unbiased=False)
-        max_var_per_batch, _ = var_per_channel.max(dim=1)
+        var_per_dim = coords.var(dim=1, unbiased=False)
+        max_var_per_batch, _ = var_per_dim.max(dim=1)
 
         data = self.transform(data, mask)  # Feature normalization
         in_xyz, in_points = data[..., :3], data[..., 3:]

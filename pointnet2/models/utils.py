@@ -107,7 +107,14 @@ def query_ball_point(radius, nsample: int, xyz, new_xyz):
     # We build the indices as floats because the tensorRT runtime only implements the TopK operator for floats
     group_idx = torch.arange(N, dtype=torch.float32).to(device).view(1, 1, N).repeat(B, S, 1)
     sqrdists = square_distance(new_xyz, xyz)
-    group_idx[sqrdists > radius**2] = N
+    if radius.dim() == 0:
+        # radius is 0-D: radius_sq is also 0-D, so it broadcasts against (B,S,N)
+        radius_sq = radius * radius
+    else:
+        # radius.dim() == 1, and radius.size(0) == B
+        # We reshape to (B, 1, 1) so it broadcasts along S and N.
+        radius_sq = (radius * radius).view(B, 1, 1)
+    group_idx[sqrdists > radius_sq] = N
     group_idx = torch.topk(group_idx, k=nsample, dim=-1, largest=False)[0]
     group_first = group_idx[:, :, 0].view(B, S, 1).repeat(1, 1, nsample)
     group_idx = torch.where(group_idx == N, group_first, group_idx)
