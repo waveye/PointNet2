@@ -209,7 +209,7 @@ class PointNetSetAbstraction(nn.Module):
         # new_points: sampled points data, [B, npoint, nsample, C+D]
         new_points = new_points.permute(0, 3, 2, 1)  # [B, C+D, nsample, npoint]
         for bn, conv in zip(self.mlp_bns, self.mlp_convs):
-            new_points = F.relu(bn(conv(new_points)))
+            new_points = F.relu(conv(new_points))
         new_points = torch.max(new_points, 2)[0]
         return new_xyz, new_points.permute(0, 2, 1)
 
