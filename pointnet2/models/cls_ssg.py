@@ -13,8 +13,8 @@ class get_model(nn.Module):
         self.transform = Transform(num_dimensions, transform)
 
         # Config
-        self.r1 = 0.2
-        self.r2 = 0.2
+        self.r1 = 0.1
+        self.r2 = 0.4
         self.npoint1 = 54
         self.npoint2 = 22
         self.nsample1 = 28
