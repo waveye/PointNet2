@@ -91,7 +91,7 @@ def farthest_point_sample(xyz, npoint: int):
 
 
 @torch.jit.script
-def query_ball_point(radius: float, nsample: int, xyz, new_xyz):
+def query_ball_point(radius, nsample: int, xyz, new_xyz):
     """
     Input:
         radius: local region radius
@@ -107,7 +107,26 @@ def query_ball_point(radius: float, nsample: int, xyz, new_xyz):
     # We build the indices as floats because the tensorRT runtime only implements the TopK operator for floats
     group_idx = torch.arange(N, dtype=torch.float32).to(device).view(1, 1, N).repeat(B, S, 1)
     sqrdists = square_distance(new_xyz, xyz)
-    group_idx[sqrdists > radius ** 2] = N
+    if isinstance(radius, torch.Tensor):
+        r = radius.clone()
+        if r.dim() == 0:
+            # single scalar → becomes a 0‐D tensor
+            radius_sq = r.pow(2)
+        elif r.dim() == 1 and r.size(0) == B:
+            # per‐batch radius → reshape to (B, 1, 1) so it broadcasts over (S, N)
+            radius_sq = r.pow(2).view(B, 1, 1)
+        elif r.dim() == 2 and r.size(0) == B and r.size(1) == S:
+            # per‐query‐point radius → reshape to (B, S, 1) so it broadcasts over N
+            radius_sq = r.pow(2).view(B, S, 1)
+        else:
+            raise ValueError(
+                f"query_ball_point got a Tensor radius of shape {tuple(r.shape)}, "
+                f"but expected a scalar, (B,), or (B,S)."
+            )
+    else:
+        # assume radius is a float or int
+        radius_sq = (torch.tensor(radius, device=device, dtype=torch.float32) ** 2)
+    group_idx[sqrdists > radius_sq] = N
     group_idx = torch.topk(group_idx, k=nsample, dim=-1, largest=False)[0]
     group_first = group_idx[:, :, 0].view(B, S, 1).repeat(1, 1, nsample)
     group_idx = torch.where(group_idx == N, group_first, group_idx)
@@ -115,7 +134,7 @@ def query_ball_point(radius: float, nsample: int, xyz, new_xyz):
 
 
 @torch.jit.script
-def sample_and_group(npoint: int, radius: float, nsample: int, xyz, points):
+def sample_and_group(npoint: int, radius, nsample: int, xyz, points):
     """
     Input:
         npoint:
@@ -163,10 +182,12 @@ class PointNetSetAbstraction(nn.Module):
     radius: float
     nsample: int
 
-    def __init__(self, npoint=0, radius=0.0, nsample=0, in_channel=3, mlp=(), group_all: bool = False):
+    def __init__(self, npoint=0, radius=0.0, nsample=0, in_channel=3, mlp=(), group_all: bool = False,
+                 radius_absolute: bool = False):
         super(PointNetSetAbstraction, self).__init__()
         self.npoint = npoint
         self.radius = radius
+        self.radius_absolute = radius_absolute
         self.nsample = nsample
         self.mlp_convs = nn.ModuleList()
         self.mlp_bns = nn.ModuleList()
@@ -178,11 +199,12 @@ class PointNetSetAbstraction(nn.Module):
         self.out_channel = last_channel
         self.group_all = group_all
 
-    def forward(self, xyz, points):
+    def forward(self, xyz, points, max_var_per_batch):
         """
         Input:
             xyz: input points position data, [B, N, C]
             points: input points feature data, [B, N, D]
+            max_var_per_batch: largest variance of object along the three axes
         Return:
             xyz: sampled points position data, [B, S, C']
             points: sample points feature data, [B, S, D']
@@ -190,7 +212,11 @@ class PointNetSetAbstraction(nn.Module):
         if self.group_all:
             new_xyz, new_points = sample_and_group_all(xyz, points)
         else:
-            new_xyz, new_points = sample_and_group(self.npoint, self.radius, self.nsample, xyz, points)
+            if not self.radius_absolute:
+                radius = self.radius * max_var_per_batch
+            else:
+                radius = self.radius
+            new_xyz, new_points = sample_and_group(self.npoint, radius, self.nsample, xyz, points)
         # new_xyz: sampled points position data, [B, npoint, C]
         # new_points: sampled points data, [B, npoint, nsample, C+D]
         new_points = new_points.permute(0, 3, 2, 1)  # [B, C+D, nsample, npoint]

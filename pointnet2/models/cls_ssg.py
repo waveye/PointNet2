@@ -13,8 +13,9 @@ class get_model(nn.Module):
         self.transform = Transform(num_dimensions, transform)
 
         # Config
-        self.r1 = 0.1
-        self.r2 = 0.4
+        self.r1 = 0.025
+        self.r2 = 0.1
+        self.radius_absolute = False
         self.npoint1 = 54
         self.npoint2 = 22
         self.nsample1 = 28
@@ -28,10 +29,10 @@ class get_model(nn.Module):
 
         self.sa1 = PointNetSetAbstraction(
             npoint=self.npoint1, radius=self.r1, nsample=self.nsample1,
-            in_channel=self.transform.num_dimensions_transformed, mlp=self.mlp1)
+            in_channel=self.transform.num_dimensions_transformed, mlp=self.mlp1, radius_absolute=self.radius_absolute)
         self.sa2 = PointNetSetAbstraction(
             npoint=self.npoint2, radius=self.r2, nsample=self.nsample2,
-            in_channel=3 + self.sa1.out_channel, mlp=self.mlp2)
+            in_channel=3 + self.sa1.out_channel, mlp=self.mlp2, radius_absolute=self.radius_absolute)
         self.sa3 = PointNetSetAbstraction(
             in_channel=3 + self.sa2.out_channel, mlp=self.mlp3, group_all=True)
         self.fc1 = nn.Linear(self.sa3.out_channel, self.fc1_out)
@@ -45,7 +46,12 @@ class get_model(nn.Module):
 
     def forward(self, data, mask=None):
         B, N, D = data.shape
-        data = self.transform(data, mask)  # Feature normalization
+
+        coords = data[:, :, :3]
+        var_per_channel = coords.var(dim=1, unbiased=False)
+        max_var_per_batch, _ = var_per_channel.max(dim=1)
+
+        data = self.transform(data, mask, max_var_per_batch)  # Feature normalization
         in_xyz, in_points = data[..., :3], data[..., 3:]
         l1_xyz, l1_points = self.sa1(in_xyz, in_points)
         l2_xyz, l2_points = self.sa2(l1_xyz, l1_points)
