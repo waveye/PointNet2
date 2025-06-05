@@ -15,15 +15,15 @@ class get_model(nn.Module):
         # Config
         self.r1 = 0.1
         self.r2 = 0.4
-        self.npoint1 = 54
-        self.npoint2 = 22
-        self.nsample1 = 28
-        self.nsample2 = 8
+        self.npoint1 = 50
+        self.npoint2 = 30
+        self.nsample1 = 10
+        self.nsample2 = 10
         self.mlp1 = (64, 64, 128)
         self.mlp2 = (64, 64, 128)
-        self.mlp3 = (256, 512, 1024)
-        self.fc1_out = 576
-        self.fc2_out = 160
+        self.mlp3 = (128, 256, 512)
+        self.fc1_out = 128
+        self.fc2_out = 64
         self.fc_dropout = 0.2
 
         self.sa1 = PointNetSetAbstraction(
