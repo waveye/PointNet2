@@ -107,28 +107,7 @@ def query_ball_point(radius, nsample: int, xyz, new_xyz):
     # We build the indices as floats because the tensorRT runtime only implements the TopK operator for floats
     group_idx = torch.arange(N, dtype=torch.float32).to(device).view(1, 1, N).repeat(B, S, 1)
     sqrdists = square_distance(new_xyz, xyz)
-    if isinstance(radius, torch.Tensor):
-        r = radius.clone()
-        if r.dim() == 0:
-            # single scalar → becomes a 0‐D tensor
-            radius_sq = r.pow(2)
-        elif r.dim() == 1 and r.size(0) == B:
-            # per‐batch radius → reshape to (B, 1, 1) so it broadcasts over (S, N)
-            radius_sq = r.pow(2).view(B, 1, 1)
-        elif r.dim() == 2 and r.size(0) == B and r.size(1) == S:
-            # per‐query‐point radius → reshape to (B, S, 1) so it broadcasts over N
-            radius_sq = r.pow(2).view(B, S, 1)
-        else:
-            print(r.dim(), r.size())
-            print(r.dtype)
-            raise ValueError(
-                f"query_ball_point got a Tensor radius of shape {tuple(r.shape)}, "
-                f"but expected a scalar, (B,), or (B,S)."
-            )
-    else:
-        # assume radius is a float or int
-        radius_sq = (torch.tensor(radius, device=device, dtype=torch.float32) ** 2)
-    group_idx[sqrdists > radius_sq] = N
+    group_idx[sqrdists > radius**2] = N
     group_idx = torch.topk(group_idx, k=nsample, dim=-1, largest=False)[0]
     group_first = group_idx[:, :, 0].view(B, S, 1).repeat(1, 1, nsample)
     group_idx = torch.where(group_idx == N, group_first, group_idx)
