@@ -163,17 +163,16 @@ class PointNetSetAbstraction(nn.Module):
     radius: float
     nsample: int
 
-    def __init__(self, npoint=0, radius=0.0, nsample=0, in_channel=3, mlp=(), group_all: bool = False, dropout: float = 0.2):
+    def __init__(self, npoint=0, radius=0.0, nsample=0, in_channel=3, mlp=(), group_all: bool = False):
         super(PointNetSetAbstraction, self).__init__()
         self.npoint = npoint
         self.radius = radius
         self.nsample = nsample
         self.mlp_convs = nn.ModuleList()
         self.mlp_bns = nn.ModuleList()
-        self.dp = nn.Dropout(p=dropout)
         last_channel = in_channel
         for out_channel in mlp:
-            self.mlp_convs.append(nn.Conv2d(last_channel, out_channel, 1))
+            self.mlp_convs.append(nn.Conv2d(last_channel, out_channel, 1, stride=1, padding=0))
             self.mlp_bns.append(nn.BatchNorm2d(out_channel, momentum=0.1))
             last_channel = out_channel
         self.out_channel = last_channel
@@ -197,7 +196,6 @@ class PointNetSetAbstraction(nn.Module):
         new_points = new_points.permute(0, 3, 2, 1)  # [B, C+D, nsample, npoint]
         for bn, conv in zip(self.mlp_bns, self.mlp_convs):
             new_points = F.relu(bn(conv(new_points)))
-        new_points = self.dp(new_points)
         new_points = torch.max(new_points, 2)[0]
         return new_xyz, new_points.permute(0, 2, 1)
 

@@ -13,7 +13,7 @@ class get_model(nn.Module):
         self.transform = Transform(num_dimensions, transform)
 
         # Config
-        self.r1 = 0.05
+        self.r1 = 0.1
         self.r2 = 0.4
         self.npoint1 = 50
         self.npoint2 = 30
@@ -24,17 +24,16 @@ class get_model(nn.Module):
         self.mlp3 = (128, 256, 512)
         self.fc1_out = 128
         self.fc2_out = 64
-        self.sa_dropout = 0.0
-        self.fc_dropout = 0.3
+        self.fc_dropout = 0.2
 
         self.sa1 = PointNetSetAbstraction(
             npoint=self.npoint1, radius=self.r1, nsample=self.nsample1,
-            in_channel=self.transform.num_dimensions_transformed, mlp=self.mlp1, dropout=self.sa_dropout)
+            in_channel=self.transform.num_dimensions_transformed, mlp=self.mlp1)
         self.sa2 = PointNetSetAbstraction(
             npoint=self.npoint2, radius=self.r2, nsample=self.nsample2,
-            in_channel=3 + self.sa1.out_channel, mlp=self.mlp2, dropout=self.sa_dropout)
+            in_channel=3 + self.sa1.out_channel, mlp=self.mlp2)
         self.sa3 = PointNetSetAbstraction(
-            in_channel=3 + self.sa2.out_channel, mlp=self.mlp3, group_all=True, dropout=self.sa_dropout)
+            in_channel=3 + self.sa2.out_channel, mlp=self.mlp3, group_all=True)
         self.fc1 = nn.Linear(self.sa3.out_channel, self.fc1_out)
         self.bn1 = nn.BatchNorm1d(self.fc1_out,
                                   momentum=0.1)
