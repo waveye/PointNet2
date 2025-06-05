@@ -119,6 +119,8 @@ def query_ball_point(radius, nsample: int, xyz, new_xyz):
             # per‐query‐point radius → reshape to (B, S, 1) so it broadcasts over N
             radius_sq = r.pow(2).view(B, S, 1)
         else:
+            print(r.dim(), r.size())
+            print(r.dtype)
             raise ValueError(
                 f"query_ball_point got a Tensor radius of shape {tuple(r.shape)}, "
                 f"but expected a scalar, (B,), or (B,S)."
