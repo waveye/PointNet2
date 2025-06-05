@@ -16,8 +16,8 @@ class get_model(nn.Module):
         self.absolute_radius = False
         # If absolute_radius=False: r1 / r2 are fractions of 2*max_std_variance (max of std_x, std_y, std_z) of a sample
         # If absolute_radius=True: r1 / r2 are absolute radii for ball query
-        self.r1 = 0.25
-        self.r2 = 0.8
+        self.r1 = 0.2
+        self.r2 = 1.2
         self.npoint1 = 50
         self.npoint2 = 30
         self.nsample1 = 10
@@ -27,7 +27,7 @@ class get_model(nn.Module):
         self.mlp3 = (128, 256, 512)
         self.fc1_out = 128
         self.fc2_out = 64
-        self.fc_dropout = 0.2
+        self.fc_dropout = 0.3
 
         self.sa1 = PointNetSetAbstraction(
             npoint=self.npoint1, radius=self.r1, nsample=self.nsample1,
