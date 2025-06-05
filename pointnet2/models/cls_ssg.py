@@ -51,11 +51,11 @@ class get_model(nn.Module):
         var_per_channel = coords.var(dim=1, unbiased=False)
         max_var_per_batch, _ = var_per_channel.max(dim=1)
 
-        data = self.transform(data, mask, max_var_per_batch)  # Feature normalization
+        data = self.transform(data, mask)  # Feature normalization
         in_xyz, in_points = data[..., :3], data[..., 3:]
-        l1_xyz, l1_points = self.sa1(in_xyz, in_points)
-        l2_xyz, l2_points = self.sa2(l1_xyz, l1_points)
-        l3_xyz, l3_points = self.sa3(l2_xyz, l2_points)
+        l1_xyz, l1_points = self.sa1(in_xyz, in_points, max_var_per_batch)
+        l2_xyz, l2_points = self.sa2(l1_xyz, l1_points, max_var_per_batch)
+        l3_xyz, l3_points = self.sa3(l2_xyz, l2_points, max_var_per_batch)
         x = l3_points.view(B, self.mlp3[-1])
         x = self.drop1(F.relu(self.bn1(self.fc1(x))))
         x = self.drop2(F.relu(self.bn2(self.fc2(x))))
