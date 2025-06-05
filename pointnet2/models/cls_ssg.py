@@ -13,6 +13,9 @@ class get_model(nn.Module):
         self.transform = Transform(num_dimensions, transform)
 
         # Config
+        self.absolute_radius = False
+        # If absolute_radius=False: r1 / r2 are fractions of 2*max_std_variance (max of std_x, std_y, std_z) of a sample
+        # If absolute_radius=True: r1 / r2 are absolute radii for ball query
         self.r1 = 0.1
         self.r2 = 0.2
         self.npoint1 = 50
@@ -28,10 +31,10 @@ class get_model(nn.Module):
 
         self.sa1 = PointNetSetAbstraction(
             npoint=self.npoint1, radius=self.r1, nsample=self.nsample1,
-            in_channel=self.transform.num_dimensions_transformed, mlp=self.mlp1, radius_absolute=False)
+            in_channel=self.transform.num_dimensions_transformed, mlp=self.mlp1, radius_absolute=self.absolute_radius)
         self.sa2 = PointNetSetAbstraction(
             npoint=self.npoint2, radius=self.r2, nsample=self.nsample2,
-            in_channel=3 + self.sa1.out_channel, mlp=self.mlp2, radius_absolute=False)
+            in_channel=3 + self.sa1.out_channel, mlp=self.mlp2, radius_absolute=self.absolute_radius)
         self.sa3 = PointNetSetAbstraction(
             in_channel=3 + self.sa2.out_channel, mlp=self.mlp3, group_all=True)
         self.fc1 = nn.Linear(self.sa3.out_channel, self.fc1_out)
