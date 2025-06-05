@@ -50,9 +50,8 @@ class get_model(nn.Module):
         B, N, D = data.shape
 
         coords = data[:, :, :3]
-        var_per_dim = coords.std(dim=1, unbiased=False)
-        max_std_per_probe, _ = 2 * var_per_dim.max(
-            dim=1)  # Two times the max std along the dimensions for every cluster as reference for radius
+        std_per_dim = coords.std(dim=1, unbiased=False)  # (B, 3)
+        max_std_per_probe = 2 * std_per_dim.max(dim=1).values  # (B,)
 
         data = self.transform(data, mask)  # Feature normalization
         in_xyz, in_points = data[..., :3], data[..., 3:]
