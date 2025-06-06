@@ -207,11 +207,18 @@ class PointNetSetAbstraction(nn.Module):
             new_xyz, new_points = sample_and_group(self.npoint, radius, self.nsample, xyz, points)
         # new_xyz: sampled points position data, [B, npoint, C]
         # new_points: sampled points data, [B, npoint, nsample, C+D]
-        new_points = new_points.permute(0, 3, 2, 1)  # [B, C+D, nsample, npoint]
+        # new_points = new_points.permute(0, 3, 2, 1)  # [B, C+D, nsample, npoint]
+        new_points = new_points.permute(0, 3, 1, 2)  # [B, C+D, npoint, nsample]
         for bn, conv in zip(self.mlp_bns, self.mlp_convs):
-            new_points = F.relu(bn(conv(new_points)))
-        new_points = torch.max(new_points, 2)[0]
-        return new_xyz, new_points.permute(0, 2, 1)
+            new_points = conv(new_points)
+            new_points = bn(new_points)
+            new_points = F.relu(new_points, inplace=True)
+        # new_points = torch.max(new_points, 2)[0]
+        # return new_xyz, new_points.permute(0, 2, 1)
+        new_points = new_points.permute(0, 2, 3, 1)
+        new_points = new_points.max(dim=2, keepdim=True)[0]
+        new_points = new_points.squeeze(2)
+        return new_xyz, new_points
 
 
 class PointNetSetAbstractionMsg(nn.Module):
