@@ -91,7 +91,7 @@ def farthest_point_sample(xyz, npoint: int):
 
 
 @torch.jit.script
-def query_ball_point(radius: float, nsample: int, xyz, new_xyz):
+def query_ball_point(radius, nsample: int, xyz, new_xyz):
     """
     Input:
         radius: local region radius
@@ -122,7 +122,7 @@ def query_ball_point(radius: float, nsample: int, xyz, new_xyz):
 
 
 @torch.jit.script
-def sample_and_group(npoint: int, radius: float, nsample: int, xyz, points):
+def sample_and_group(npoint: int, radius, nsample: int, xyz, points):
     """
     Input:
         npoint:
@@ -202,9 +202,9 @@ class PointNetSetAbstraction(nn.Module):
         else:
             if not self.radius_absolute:
                 radius = self.radius * max_var_per_batch
-                new_xyz, new_points = sample_and_group(self.npoint, radius, self.nsample, xyz, points)
             else:
-                new_xyz, new_points = sample_and_group(self.npoint, self.radius, self.nsample, xyz, points)
+                radius = torch.tensor(self.radius, device=xyz.device)
+            new_xyz, new_points = sample_and_group(self.npoint, radius, self.nsample, xyz, points)
         # new_xyz: sampled points position data, [B, npoint, C]
         # new_points: sampled points data, [B, npoint, nsample, C+D]
         new_points = new_points.permute(0, 3, 2, 1)  # [B, C+D, nsample, npoint]
