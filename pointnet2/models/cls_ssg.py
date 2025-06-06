@@ -17,12 +17,12 @@ class get_model(nn.Module):
         # If absolute_radius=False: r1 / r2 are fractions of 2*max_std_variance (max of std_x, std_y, std_z) of a sample
         # If absolute_radius=True: r1 / r2 are absolute radii for ball query
         self.r1 = 0.1
-        self.r2 = 1.0
-        self.npoint1 = 70
+        self.r2 = 0.5
+        self.npoint1 = 50
         self.npoint2 = 30
         self.nsample1 = 10
         self.nsample2 = 20
-        self.mlp1 = (64, 64, 128)
+        self.mlp1 = (32, 32, 64)
         self.mlp2 = (64, 64, 128)
         self.mlp3 = (128, 256, 512)
         self.fc1_out = 128
@@ -39,18 +39,18 @@ class get_model(nn.Module):
             in_channel=3 + self.sa2.out_channel, mlp=self.mlp3, group_all=True)
         self.fc1 = nn.Linear(self.sa3.out_channel, self.fc1_out)
         self.bn1 = nn.BatchNorm1d(self.fc1_out,
-                                  momentum=0.1)
+                                  momentum=0.01)
         self.drop1 = nn.Dropout(self.fc_dropout)
         self.fc2 = nn.Linear(self.fc1_out, self.fc2_out)  # Aligned with tf_pipeline -> Reduced from 576 to 256
-        self.bn2 = nn.BatchNorm1d(self.fc2_out, momentum=0.1)
+        self.bn2 = nn.BatchNorm1d(self.fc2_out, momentum=0.01)
         self.drop2 = nn.Dropout(self.fc_dropout)
         self.fc3 = nn.Linear(self.fc2_out, num_classes)  # Aligned with tf_pipeline -> Reduced from 160 to 128
 
     def forward(self, data, mask=None):
         B, N, D = data.shape
 
-        coords = data[:, :, :2] # Extract x and y coords, not height
-        std_per_dim = coords.std(dim=1, unbiased=False)  # (B, 2)
+        coords = data[:, :, :3]
+        std_per_dim = coords.std(dim=1, unbiased=False)  # (B, 3)
         max_std_per_probe = 2 * std_per_dim.max(dim=1).values  # (B,)
 
         data = self.transform(data, mask)  # Feature normalization
