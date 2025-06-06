@@ -13,11 +13,11 @@ class get_model(nn.Module):
         self.transform = Transform(num_dimensions, transform)
 
         # Config
-        self.absolute_radius = False
+        self.absolute_radius = True
         # If absolute_radius=False: r1 / r2 are fractions of 2*max_std_variance (max of std_x, std_y, std_z) of a sample
         # If absolute_radius=True: r1 / r2 are absolute radii for ball query
-        self.r1 = 0.1
-        self.r2 = 0.5
+        self.r1 = 0.2
+        self.r2 = 0.3
         self.npoint1 = 50
         self.npoint2 = 30
         self.nsample1 = 10
@@ -39,10 +39,10 @@ class get_model(nn.Module):
             in_channel=3 + self.sa2.out_channel, mlp=self.mlp3, group_all=True)
         self.fc1 = nn.Linear(self.sa3.out_channel, self.fc1_out)
         self.bn1 = nn.BatchNorm1d(self.fc1_out,
-                                  momentum=0.01)
+                                  momentum=0.1)
         self.drop1 = nn.Dropout(self.fc_dropout)
         self.fc2 = nn.Linear(self.fc1_out, self.fc2_out)  # Aligned with tf_pipeline -> Reduced from 576 to 256
-        self.bn2 = nn.BatchNorm1d(self.fc2_out, momentum=0.01)
+        self.bn2 = nn.BatchNorm1d(self.fc2_out, momentum=0.1)
         self.drop2 = nn.Dropout(self.fc_dropout)
         self.fc3 = nn.Linear(self.fc2_out, num_classes)  # Aligned with tf_pipeline -> Reduced from 160 to 128
 
